@@ -55,9 +55,6 @@ class CrawlerCore {
     final uri = Uri.parse(baseUrl);
     final domain = uri.host;
     
-    // 清除旧 Cookie，设置新 Cookie
-    _dio.cookieJar?.delete(uri);
-    
     // 设置 language=cn_CN（注意：正确名称是 language，不是 session_language）
     _dio.options.headers['Cookie'] = 'language=cn_CN';
     
@@ -103,7 +100,7 @@ class CrawlerCore {
       throw Exception('未知的列表类型: $listType');
     }
     
-    final url = '$baseUrl/${urlPattern.replaceAll('{page}', page.toString())}');
+    final url = '$baseUrl/${urlPattern.replaceAll('{page}', page.toString())}';
     print('[Crawler] 获取视频列表: $url');
     
     try {

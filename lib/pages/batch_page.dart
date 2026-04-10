@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/video_info.dart';
 import '../services/app_state.dart';
 
 class BatchPage extends StatefulWidget {
