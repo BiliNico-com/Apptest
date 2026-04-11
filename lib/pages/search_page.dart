@@ -188,7 +188,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 ),
                 onPressed: () {
                   appState.togglePrivacyMode();
-                  logger.ui('Search', 'UI操作: 切换隐私模式 -> ${appState.privacyMode}');
                 },
                 tooltip: appState.privacyMode ? '取消模糊' : '模糊预览图',
               );
@@ -427,7 +426,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       _status = '搜索中...';
     });
     
-    await logger.ui('Search', 'UI操作: 点击搜索按钮, 关键词: ${_keywordController.text}, 作者模式: $_isAuthorMode, 排序: $_sortBy');
     
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
@@ -683,7 +681,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     // 时长标签（右下角，在毛玻璃之上）
                     if (video.duration != null)
                       Positioned(
-                        bottom: 8,
+                        bottom: 50,
                         right: 8,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -782,7 +780,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   Future<void> _download() async {
     if (_selectedIds.isEmpty) return;
     
-    await logger.ui('Search', 'UI操作: 点击下载按钮, 选中 ${_selectedIds.length} 个视频');
     
     final appState = context.read<AppState>();
     

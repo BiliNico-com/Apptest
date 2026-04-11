@@ -2,13 +2,6 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
-/// 日志类型
-enum LogType {
-  normal,   // 普通日志，不受开关影响
-  network,  // 网络日志
-  ui,       // UI操作日志
-}
-
 class Logger {
   static final Logger _instance = Logger._internal();
   factory Logger() => _instance;
@@ -18,9 +11,8 @@ class Logger {
   File? _logFile;
   String? _logPath;
   
-  // 日志类型开关
+  // 网络日志开关
   bool enableNetworkLog = true;
-  bool enableUILog = true;
   
   bool get enabled => _enabled;
   String? get logPath => _logPath;
@@ -58,11 +50,10 @@ class Logger {
     _enabled = enable;
   }
   
-  // 写入日志（带类型过滤）
-  Future<void> log(String tag, String message, {String level = 'INFO', LogType type = LogType.normal}) async {
-    // 检查日志类型开关
-    if (type == LogType.network && !enableNetworkLog) return;
-    if (type == LogType.ui && !enableUILog) return;
+  // 写入日志
+  Future<void> log(String tag, String message, {String level = 'INFO', bool isNetwork = false}) async {
+    // 网络日志检查开关
+    if (isNetwork && !enableNetworkLog) return;
     
     final timestamp = DateFormat('HH:mm:ss.SSS').format(DateTime.now());
     final line = '[$timestamp][$level][$tag] $message\n';
@@ -88,11 +79,7 @@ class Logger {
   
   // 便捷方法 - 网络日志
   Future<void> network(String tag, String message, {String level = 'INFO'}) => 
-      log(tag, message, level: level, type: LogType.network);
-  
-  // 便捷方法 - UI操作日志
-  Future<void> ui(String tag, String message, {String level = 'INFO'}) => 
-      log(tag, message, level: level, type: LogType.ui);
+      log(tag, message, level: level, isNetwork: true);
   
   // 获取日志内容
   Future<String> getLogContent() async {
