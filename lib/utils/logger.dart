@@ -175,7 +175,8 @@ class Logger {
     }
     
     try {
-      final content = await _logFile!.readAsString();
+      // 使用字节读取，避免UTF-8解码失败
+      final bytes = await _logFile!.readAsBytes();
       final now = DateTime.now();
       final fileName = 'network_log_${DateFormat('yyyyMMdd_HHmmss').format(now)}.txt';
       
@@ -190,7 +191,7 @@ class Logger {
           ? '$targetDir$fileName' 
           : '$targetDir/$fileName';
       final targetFile = File(targetPath);
-      await targetFile.writeAsString(content);
+      await targetFile.writeAsBytes(bytes);
       return (targetFile.path, null);
     } catch (e) {
       return (null, '写入失败: $e');
