@@ -212,7 +212,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                         ? _buildAuthorResults()
                         : _buildVideoResults(),
                 
-                // 回顶部按钮（左下角）
+                // 悬浮按钮组（左下角或右下角：页码+回顶部）
                 Consumer<AppState>(
                   builder: (context, appState, _) {
                     if (!_showPageIndicator || !appState.showBackToTop) {
@@ -220,12 +220,33 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     }
                     return Positioned(
                       bottom: 16,
-                      left: 16,
-                      child: FloatingActionButton(
-                        mini: true,
-                        heroTag: 'search_back_to_top',
-                        onPressed: _scrollToTop,
-                        child: Icon(Icons.arrow_upward),
+                      left: appState.backToTopPosition == 'left' ? 16 : null,
+                      right: appState.backToTopPosition == 'right' ? 16 : null,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 悬浮页码显示
+                          if (_currentPage > 0 && !_isAuthorMode)
+                            Container(
+                              margin: EdgeInsets.only(right: 8),
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.black87,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '第 $_currentPage 页',
+                                style: TextStyle(color: Colors.white, fontSize: 12),
+                              ),
+                            ),
+                          // 回顶部按钮
+                          FloatingActionButton(
+                            mini: true,
+                            heroTag: 'search_back_to_top',
+                            onPressed: _scrollToTop,
+                            child: Icon(Icons.arrow_upward),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -673,7 +694,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     // 时长标签（右下角，在标题上方，在毛玻璃之上）
                     if (video.duration != null)
                       Positioned(
-                        bottom: 55,
+                        bottom: 80,
                         right: 8,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
