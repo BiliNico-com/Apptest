@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 import '../services/app_state.dart';
 import '../crawler/config.dart';
 import '../utils/logger.dart';
@@ -290,7 +291,19 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   void _selectDownloadDirectory(AppState appState) async {
     await logger.i('Settings', '点击选择下载目录');
     
-    // 显示一个对话框让用户输入路径
+    // 尝试使用 file_picker 选择目录
+    try {
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      
+      if (selectedDirectory != null) {
+        _setDownloadDirectory(selectedDirectory);
+        return;
+      }
+    } catch (e) {
+      await logger.w('Settings', 'file_picker 不可用: $e');
+    }
+    
+    // 如果 file_picker 失败，显示手动输入对话框
     final controller = TextEditingController(text: appState.downloadDir);
     final result = await showDialog<String>(
       context: context,

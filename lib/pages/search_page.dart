@@ -87,10 +87,12 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               padding: EdgeInsets.all(16),
               child: Row(
                 children: [
-                  TextButton(
-                    onPressed: _toggleAll,
-                    child: Text(_selectedIds.length == _results.length ? '取消全选' : '全选'),
-                  ),
+                  // 只有选中了视频才显示全选按钮
+                  if (_selectedIds.isNotEmpty)
+                    TextButton(
+                      onPressed: _toggleAll,
+                      child: Text(_selectedIds.length == _results.length ? '取消全选' : '全选'),
+                    ),
                   Spacer(),
                   FilledButton(
                     onPressed: _selectedIds.isEmpty ? null : _download,
@@ -164,7 +166,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       
       setState(() {
         _results = results;
-        _selectedIds = results.map((v) => v.id).toSet();
+        _selectedIds.clear();  // 默认不全选
         _isLoading = false;
       });
     }

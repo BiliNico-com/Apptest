@@ -83,7 +83,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     } else {
       setState(() {
         _videos.addAll(newVideos);
-        _selectedIds.addAll(newVideos.map((v) => v.id));
+        // 不再自动全选
       });
     }
     
@@ -196,6 +196,24 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                   _buildBottomBar(),
                 ],
               ),
+              // 悬浮页码显示
+              if (_showBackToTop && _currentPage > 0)
+                Positioned(
+                  bottom: appState.backToTopPosition == 'left' ? 16 : 80,
+                  left: appState.backToTopPosition == 'left' ? null : 16,
+                  right: appState.backToTopPosition == 'left' ? 80 : null,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      '第 $_currentPage 页',
+                      style: TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
+                ),
               // 回顶部按钮
               if (_showBackToTop && appState.showBackToTop)
                 Positioned(
@@ -398,20 +416,22 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       ),
       child: Row(
         children: [
-          TextButton(
-            onPressed: _videos.isEmpty ? null : () async {
-              final isAllSelected = _selectedIds.length == _videos.length;
-              await logger.i('Batch', 'UI操作: ${isAllSelected ? "取消全选" : "全选"}');
-              setState(() {
-                if (isAllSelected) {
-                  _selectedIds.clear();
-                } else {
-                  _selectedIds = _videos.map((v) => v.id).toSet();
-                }
-              });
-            },
-            child: Text(_selectedIds.length == _videos.length ? '取消全选' : '全选'),
-          ),
+          // 只有选中了视频才显示全选按钮
+          if (_selectedIds.isNotEmpty)
+            TextButton(
+              onPressed: () async {
+                final isAllSelected = _selectedIds.length == _videos.length;
+                await logger.i('Batch', 'UI操作: ${isAllSelected ? "取消全选" : "全选"}');
+                setState(() {
+                  if (isAllSelected) {
+                    _selectedIds.clear();
+                  } else {
+                    _selectedIds = _videos.map((v) => v.id).toSet();
+                  }
+                });
+              },
+              child: Text(_selectedIds.length == _videos.length ? '取消全选' : '全选'),
+            ),
           Spacer(),
           FilledButton(
             onPressed: _selectedIds.isEmpty ? null : _startDownload,
@@ -461,7 +481,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     
     setState(() {
       _videos = videos;
-      _selectedIds = videos.map((v) => v.id).toSet();
+      _selectedIds.clear();  // 默认不全选
       _isLoading = false;
       _status = '就绪';
       _currentPage = _pageEnd;  // 记录当前页码
