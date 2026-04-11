@@ -98,6 +98,24 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
+        actions: [
+          // 隐私模式按钮
+          Consumer<AppState>(
+            builder: (context, appState, _) {
+              return IconButton(
+                icon: Icon(
+                  appState.privacyMode ? Icons.visibility_off : Icons.visibility,
+                  color: appState.privacyMode ? Colors.red : Colors.grey,
+                ),
+                onPressed: () {
+                  appState.togglePrivacyMode();
+                  logger.i('Search', 'UI操作: 切换隐私模式 -> ${appState.privacyMode}');
+                },
+                tooltip: appState.privacyMode ? '取消模糊' : '模糊预览图',
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
