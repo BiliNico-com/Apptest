@@ -209,8 +209,73 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
 
   void _download() async {
     await logger.i('Search', 'UI操作: 点击下载按钮, 选中 ${_selectedIds.length} 个视频');
+    
+    final appState = context.read<AppState>();
+    final crawler = appState.crawler;
+    if (crawler == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('请先在设置页选择站点')),
+      );
+      return;
+    }
+    
+    // 获取选中的视频
+    final selectedVideos = _results.where((v) => _selectedIds.contains(v.id)).toList();
+    
+    await logger.i('Search', '开始下载 ${selectedVideos.length} 个视频');
+    
+    // 显示下载开始提示
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('开始下载 ${_selectedIds.length} 个视频')),
+      SnackBar(content: Text('开始下载 ${selectedVideos.length} 个视频')),
     );
+    
+    // TODO: 实现下载队列和进度显示
+    // 暂时只下载第一个视频作为测试
+    if (selectedVideos.isNotEmpty) {
+      final video = selectedVideos.first;
+      await logger.i('Search', '下载视频: ${video.title}');
+      
+      try {
+        // 获取下载目录
+        final savePath = '${appState.downloadDir}/${video.title}.mp4';
+        
+        // 获取视频详情（m3u8地址）
+        final detail = await crawler.getVideoDetail(video);
+        if (detail == null || detail.m3u8Url == null) {
+          await logger.e('Search', '无法获取视频地址: ${video.title}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('无法获取视频地址')),
+            );
+          }
+          return;
+        }
+        
+        await logger.i('Search', '获取到 m3u8 地址: ${detail.m3u8Url}');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('获取到视频地址，开始下载...')),
+          );
+        }
+        
+        // 开始下载
+        final success = await crawler.downloadVideo(detail, savePath);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(success ? '下载完成' : '下载失败')),
+          );
+        }
+        
+      } catch (e) {
+        await logger.e('Search', '下载失败: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('下载失败: $e')),
+          );
+        }
+      }
+    }
   }
 }

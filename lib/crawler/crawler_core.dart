@@ -225,49 +225,31 @@ class CrawlerCore {
   }
   
   /// 解析视频列表 HTML - original CMS（ml0987/hsex 风格）
+  /// 严格参照 Python 版本 _extract_search_results
   List<VideoInfo> _parseVideoListOriginal(String html) {
     final videos = <VideoInfo>[];
     final seenIds = <String>{};
     
     print('[Crawler] 解析 original HTML, 长度: ${html.length}');
     
-    // original CMS 使用 video-{id}.htm 格式的链接
-    // 匹配所有 video-数字.htm 链接
-    final videoLinkPattern = RegExp(r'<a[^>]*href="(video-(\d+)\.htm)"[^>]*>');
-    final titlePattern = RegExp(r'<span[^>]*class="video-title[^"]*"[^>]*>([^<]+)</span>', caseSensitive: false);
-    final coverPattern = RegExp(r'<img[^>]*src="(https?://[^"]+)"[^>]*(?:data-id|class="[^"]*thumb[^"]*")', caseSensitive: false);
+    // 策略1: 列表页格式（带封面图的 <a> 标签）
+    // <a href="video-xxx.htm"><div style="background-image:url('xxx')" title="标题"></div></a>
+    final pattern1 = RegExp(
+      r'<a[^>]*href="(video-(\d+)\.htm)"[^>]*>\s*<div[^>]*style="[^"]*background-image:\s*url\(["\']([^"\']+)["\']\)[^"]*"\s*title=\s*"([^"]*)"',
+      caseSensitive: false,
+    );
     
-    // 分割成视频块
-    final blockPattern = RegExp(r'<div[^>]*class="[^"]*video-item[^"]*"[^>]*>([\s\S]*?)</div>\s*</div>', caseSensitive: false);
-    final blocks = blockPattern.allMatches(html).toList();
-    
-    print('[Crawler] 找到 ${blocks.length} 个 video-item 块');
-    
-    for (final block in blocks) {
-      final content = block.group(1)!;
+    for (final match in pattern1.allMatches(html)) {
+      final videoHref = match.group(1)!;
+      final videoId = match.group(2)!;
+      var cover = match.group(3)!;
+      final title = match.group(4)!.trim();
       
-      // 提取视频链接和ID
-      final linkMatch = videoLinkPattern.firstMatch(content);
-      if (linkMatch == null) continue;
-      
-      final videoHref = linkMatch.group(1)!;
-      final videoId = linkMatch.group(2)!;
-      
-      // 提取标题
-      String title = 'Video $videoId';
-      final titleMatch = titlePattern.firstMatch(content);
-      if (titleMatch != null) {
-        title = titleMatch.group(1)!.trim();
+      // 封面相对路径转绝对路径
+      if (!cover.startsWith('http')) {
+        cover = '$baseUrl/$cover';
       }
       
-      // 提取封面
-      String? cover;
-      final coverMatch = coverPattern.firstMatch(content);
-      if (coverMatch != null) {
-        cover = coverMatch.group(1);
-      }
-      
-      // 去重
       if (seenIds.contains(videoId)) continue;
       seenIds.add(videoId);
       
@@ -279,15 +261,32 @@ class CrawlerCore {
       ));
     }
     
-    // 如果上面的解析没找到，尝试更宽松的匹配
+    print('[Crawler] 策略1找到 ${videos.length} 个视频');
+    
+    // 策略2: 搜索结果格式（<h4><a href="video-xxx.htm">标题</a></h4>）
     if (videos.isEmpty) {
-      print('[Crawler] 尝试宽松匹配...');
+      final pattern2 = RegExp(
+        r'<h4>\s*<a[^>]*href="(video-(\d+)\.htm)"[^>]*>([^<]+)</a>',
+        caseSensitive: false,
+      );
       
-      // 直接匹配所有 video-数字.htm 链接
-      final allLinks = videoLinkPattern.allMatches(html);
-      for (final link in allLinks) {
-        final videoHref = link.group(1)!;
-        final videoId = link.group(2)!;
+      for (final match in pattern2.allMatches(html)) {
+        final videoHref = match.group(1)!;
+        final videoId = match.group(2)!;
+        final title = match.group(3)!.trim();
+        
+        // 尝试从上下文中提取封面
+        String? cover;
+        final pos = match.start;
+        final blockStart = pos > 500 ? pos - 500 : 0;
+        final block = html.substring(blockStart, pos);
+        final coverMatch = RegExp(r'background-image:\s*url\(["\']([^"\']+)["\']\)').firstMatch(block);
+        if (coverMatch != null) {
+          cover = coverMatch.group(1)!;
+          if (!cover.startsWith('http')) {
+            cover = '$baseUrl/$cover';
+          }
+        }
         
         if (seenIds.contains(videoId)) continue;
         seenIds.add(videoId);
@@ -295,9 +294,12 @@ class CrawlerCore {
         videos.add(VideoInfo(
           id: videoId,
           url: '$baseUrl/$videoHref',
-          title: 'Video $videoId',
+          title: title,
+          cover: cover,
         ));
       }
+      
+      print('[Crawler] 策略2找到 ${videos.length} 个视频');
     }
     
     print('[Crawler] 解析到 ${videos.length} 个视频');
