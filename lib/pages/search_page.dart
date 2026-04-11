@@ -125,6 +125,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     } else {
       setState(() {
         _results.addAll(newResults);
+        // 如果返回结果少于每页数量，说明没有更多了
+        if (newResults.length < 20) {
+          _hasMore = false;
+        }
       });
     }
     
@@ -149,6 +153,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     } else {
       setState(() {
         _authorVideos.addAll(newVideos);
+        // 如果返回结果少于每页数量，说明没有更多了
+        if (newVideos.length < 20) {
+          _authorHasMore = false;
+        }
       });
     }
     

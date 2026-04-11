@@ -107,6 +107,10 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     } else {
       setState(() {
         _videos.addAll(newVideos);
+        // 如果返回结果少于每页数量，说明没有更多了
+        if (newVideos.length < 24) {
+          _hasMore = false;
+        }
       });
     }
     
