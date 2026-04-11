@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../crawler/crawler_core.dart';
 import '../models/video_info.dart';
+import '../utils/logger.dart';
 
 class AppState extends ChangeNotifier {
   // 站点配置 - 默认为空，用户必须选择
@@ -12,6 +13,9 @@ class AppState extends ChangeNotifier {
   // 下载目录
   String downloadDir = '';
   bool permissionGranted = false;
+  
+  // Debug模式
+  bool debugMode = false;
   
   // 主题
   bool isDarkMode = true;
@@ -27,8 +31,11 @@ class AppState extends ChangeNotifier {
   
   // 初始化 - 请求权限并设置默认下载目录
   Future<void> init() async {
+    await logger.init(debugMode);
+    await logger.i('AppState', '初始化开始');
     await requestPermissions();
     await initDownloadDir();
+    await logger.i('AppState', '初始化完成, 权限: $permissionGranted, 下载目录: $downloadDir');
   }
   
   // 请求存储权限
@@ -88,6 +95,13 @@ class AppState extends ChangeNotifier {
   // 设置下载目录
   void setDownloadDir(String dir) {
     downloadDir = dir;
+    notifyListeners();
+  }
+  
+  // 切换Debug模式
+  Future<void> toggleDebug(bool enable) async {
+    debugMode = enable;
+    await logger.toggle(enable);
     notifyListeners();
   }
 }

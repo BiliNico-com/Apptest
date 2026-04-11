@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/video_info.dart';
 import '../services/app_state.dart';
+import '../utils/logger.dart';
 
 class BatchPage extends StatefulWidget {
   const BatchPage({super.key});
@@ -256,6 +257,8 @@ class _BatchPageState extends State<BatchPage> {
   }
 
   Future<void> _loadVideos() async {
+    await logger.i('Batch', '开始加载视频: $_selectedType, 页码: $_pageStart-$_pageEnd');
+    
     setState(() {
       _isLoading = true;
       _status = '加载中...';
@@ -266,6 +269,7 @@ class _BatchPageState extends State<BatchPage> {
     final crawler = appState.crawler;
     
     if (crawler == null) {
+      await logger.e('Batch', '爬虫为空, 请先选择站点');
       setState(() {
         _isLoading = false;
         _status = '请先选择站点';
@@ -275,9 +279,12 @@ class _BatchPageState extends State<BatchPage> {
     
     final videos = <VideoInfo>[];
     for (var p = _pageStart; p <= _pageEnd; p++) {
+      await logger.d('Batch', '加载第 $p 页');
       final list = await crawler.getVideoList(_selectedType, p);
       videos.addAll(list);
     }
+    
+    await logger.i('Batch', '加载完成, 共 ${videos.length} 个视频');
     
     setState(() {
       _videos = videos;

@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'pages/main_page.dart';
 import 'services/app_state.dart';
+import 'utils/logger.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 初始化日志
+  await logger.init(false);
+  await logger.i('Main', '应用启动');
+  
   runApp(const MyApp());
 }
 
