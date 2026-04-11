@@ -234,8 +234,9 @@ class CrawlerCore {
     
     // 策略1: 列表页格式（带封面图的 <a> 标签）
     // <a href="video-xxx.htm"><div style="background-image:url('xxx')" title="标题"></div></a>
+    // 注意：Dart 中 ["'] 是字符类，匹配单引号或双引号
     final pattern1 = RegExp(
-      r'<a[^>]*href="(video-(\d+)\.htm)"[^>]*>\s*<div[^>]*style="[^"]*background-image:\s*url\(["\']([^"\']+)["\']\)[^"]*"\s*title=\s*"([^"]*)"',
+      r'''<a[^>]*href="(video-(\d+)\.htm)"[^>]*>\s*<div[^>]*style="[^"]*background-image:\s*url\(['"]([^'"]+)['"]\)[^"]*"\s*title=\s*"([^"]*)"''',
       caseSensitive: false,
     );
     
@@ -280,7 +281,7 @@ class CrawlerCore {
         final pos = match.start;
         final blockStart = pos > 500 ? pos - 500 : 0;
         final block = html.substring(blockStart, pos);
-        final coverMatch = RegExp(r'background-image:\s*url\(["\']([^"\']+)["\']\)').firstMatch(block);
+        final coverMatch = RegExp(r'''background-image:\s*url\(['"]([^'"]+)['"]\)''').firstMatch(block);
         if (coverMatch != null) {
           cover = coverMatch.group(1)!;
           if (!cover.startsWith('http')) {
