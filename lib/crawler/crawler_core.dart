@@ -422,7 +422,17 @@ class CrawlerCore {
 
   /// 搜索作者
   Future<List<AuthorInfo>> searchAuthors(String keyword) async {
-    final url = '$baseUrl/search_result.php?search_id=${Uri.encodeComponent(keyword)}&search_type=author';
+    // 根据站点类型构建不同的搜索URL
+    String url;
+    if (_siteType == "porn91") {
+      // porn91 风格
+      url = '$baseUrl/search_result.php?search_id=${Uri.encodeComponent(keyword)}&search_type=author';
+    } else {
+      // original 风格：使用 search.htm?search=xxx（和搜索视频一样的URL）
+      url = '$baseUrl/search.htm?search=${Uri.encodeComponent(keyword)}';
+    }
+    
+    await logger.log('Crawler', '网络请求: 搜索作者 $url');
     
     try {
       final resp = await _dio.get(url);
@@ -431,7 +441,7 @@ class CrawlerCore {
       final authors = <AuthorInfo>[];
       final seenNames = <String>{};
       
-      // 匹配作者链接（参考PC版正则）
+      // 匹配作者链接
       // <a class="btn btn-default" href="user.htm?author=xxx">&nbsp;名字&nbsp;<span class="badge">数量</span></a>
       final pattern = RegExp(
         r'<a[^>]*class="[^"]*btn[^"]*"[^>]*href="user\.htm\?author=([^"]+)"[^>]*>\s*(&nbsp;)*([^<&]+)\s*(&nbsp;)*\s*<span[^>]*class="[^"]*badge[^"]*"[^>]*>\s*(\d+)\s*</span>\s*</a>',
@@ -453,6 +463,7 @@ class CrawlerCore {
         }
       }
       
+      await logger.log('Crawler', '搜索作者完成, 结果数: ${authors.length}');
       return authors;
     } catch (e) {
       await logger.log('Crawler', '搜索作者失败: $e');

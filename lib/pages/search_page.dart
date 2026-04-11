@@ -460,7 +460,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       });
     } else {
       // 搜索视频
-      final results = await crawler.searchVideos(_keywordController.text);
+      final results = await crawler.searchVideos(_keywordController.text, sort: _sortBy);
       
       setState(() {
         _results = results;

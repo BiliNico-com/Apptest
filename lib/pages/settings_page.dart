@@ -529,6 +529,18 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
                   SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
+                      onPressed: () => _saveLog(appState.downloadDir),
+                      icon: Icon(Icons.save, size: 18),
+                      label: Text('保存日志'),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
                       onPressed: _clearLog,
                       icon: Icon(Icons.delete, size: 18, color: Colors.red),
                       label: Text('清空日志', style: TextStyle(color: Colors.red)),
@@ -588,6 +600,26 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
     }
     
     await Share.share(content, subject: '91Download Network Log');
+  }
+  
+  Future<void> _saveLog(String downloadDir) async {
+    if (downloadDir.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('下载目录未初始化')),
+      );
+      return;
+    }
+    
+    final savedPath = await logger.saveToDirectory(downloadDir);
+    if (savedPath != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('日志已保存到: $savedPath')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存日志失败')),
+      );
+    }
   }
   
   Future<void> _clearLog() async {
