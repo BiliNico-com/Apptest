@@ -564,6 +564,8 @@ class CrawlerCore {
             final encoded = strencodeMatch.group(1)!;
             final decoded = Uri.decodeComponent(encoded);
             
+            await logger.log('Crawler', '[策略A] videoId=$videoId, 解码内容前200字符: ${decoded.substring(0, decoded.length > 200 ? 200 : decoded.length)}');
+            
             // 遍历所有解码的 src 属性，优先匹配视频ID
             final srcPattern = RegExp(r'''src=["']([^"']+)["']''', caseSensitive: false);
             final srcMatches = srcPattern.allMatches(decoded).toList();
@@ -575,6 +577,7 @@ class CrawlerCore {
               final src = srcMatches[i].group(1)?.replaceAll('&amp;', '&') ?? '';
               
               if (src.contains('.mp4') || src.contains('.m3u8')) {
+                await logger.log('Crawler', '[策略A] src[$i]: $src (contains videoId=${src.contains(videoId ?? '')})');
                 // 如果有视频ID，必须匹配包含该ID的URL
                 if (videoId != null && src.contains(videoId)) {
                   videoUrl = src;

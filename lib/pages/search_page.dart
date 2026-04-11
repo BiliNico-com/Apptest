@@ -330,106 +330,103 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               ),
               // 结果列表
               Expanded(
-                child: Stack(
-                  children: [
-                    _isLoading && (_results.isEmpty && _authorVideos.isEmpty)
-                        ? Center(child: CircularProgressIndicator())
-                        : _isAuthorMode && !_isAuthorPageMode
-                            ? _buildAuthorResults()
-                            : _buildVideoResults(),
-                
-                // 悬浮按钮组（页码在上，返回按钮在中间，回顶部按钮在下）
-                Consumer<AppState>(
-                  builder: (context, appState, _) {
-                    if (!_showPageIndicator || !appState.showBackToTop) {
-                      return SizedBox.shrink();
-                    }
-                    // 右下角且选中视频时，需要避开下载按钮
-                    final isRight = appState.backToTopPosition == 'right';
-                    final hasSelection = _selectedIds.isNotEmpty;
-                    final bottomOffset = (isRight && hasSelection) ? 80.0 : 16.0;
-                    
-                    return Positioned(
-                      bottom: bottomOffset,
-                      left: appState.backToTopPosition == 'left' ? 16 : null,
-                      right: appState.backToTopPosition == 'right' ? 16 : null,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: appState.backToTopPosition == 'left' 
-                            ? CrossAxisAlignment.start 
-                            : CrossAxisAlignment.end,
-                        children: [
-                          // 返回搜索按钮（仅作者主页模式）
-                          if (_isAuthorPageMode)
-                            GestureDetector(
-                              onTap: _exitAuthorPageMode,
-                              child: Container(
-                                margin: EdgeInsets.only(bottom: 8),
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.arrow_back, color: Colors.white, size: 16),
-                                    SizedBox(width: 4),
-                                    Text('返回搜索', style: TextStyle(color: Colors.white, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          // 搜索按钮（搜索区域隐藏时显示）
-                          if (!_showSettings)
-                            GestureDetector(
-                              onTap: () {
-                                setState(() => _showSettings = true);
-                                _scrollToTop();
-                              },
-                              child: Container(
-                                margin: EdgeInsets.only(bottom: 8),
-                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.search, color: Colors.white, size: 16),
-                                    SizedBox(width: 4),
-                                    Text('搜索', style: TextStyle(color: Colors.white, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          // 回顶部按钮
-                          FloatingActionButton(
-                            mini: true,
-                            heroTag: 'search_back_to_top',
-                            onPressed: _scrollToTop,
-                            child: Icon(Icons.arrow_upward),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                // 下载按钮（右下角，仅选中后显示）
-                if (_selectedIds.isNotEmpty)
-                  Positioned(
-                    bottom: 16,
-                    right: 16,
-                    child: FloatingActionButton.extended(
-                      onPressed: _download,
-                      icon: Icon(Icons.download),
-                      label: Text('下载 (${_selectedIds.length})'),
-                    ),
-                  ),
-              ],
-            ),
+                child: _isLoading && (_results.isEmpty && _authorVideos.isEmpty)
+                    ? Center(child: CircularProgressIndicator())
+                    : _isAuthorMode && !_isAuthorPageMode
+                        ? _buildAuthorResults()
+                        : _buildVideoResults(),
+              ),
+            ],
           ),
+          // 悬浮按钮组（页码在上，返回按钮在中间，回顶部按钮在下）
+          Consumer<AppState>(
+            builder: (context, appState, _) {
+              if (!_showPageIndicator || !appState.showBackToTop) {
+                return SizedBox.shrink();
+              }
+              // 右下角且选中视频时，需要避开下载按钮
+              final isRight = appState.backToTopPosition == 'right';
+              final hasSelection = _selectedIds.isNotEmpty;
+              final bottomOffset = (isRight && hasSelection) ? 80.0 : 16.0;
+              
+              return Positioned(
+                bottom: bottomOffset,
+                left: appState.backToTopPosition == 'left' ? 16 : null,
+                right: appState.backToTopPosition == 'right' ? 16 : null,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: appState.backToTopPosition == 'left' 
+                      ? CrossAxisAlignment.start 
+                      : CrossAxisAlignment.end,
+                  children: [
+                    // 返回搜索按钮（仅作者主页模式）
+                    if (_isAuthorPageMode)
+                      GestureDetector(
+                        onTap: _exitAuthorPageMode,
+                        child: Container(
+                          margin: EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.arrow_back, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text('返回搜索', style: TextStyle(color: Colors.white, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // 搜索按钮（搜索区域隐藏时显示）
+                    if (!_showSettings)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _showSettings = true);
+                          _scrollToTop();
+                        },
+                        child: Container(
+                          margin: EdgeInsets.only(bottom: 8),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search, color: Colors.white, size: 16),
+                              SizedBox(width: 4),
+                              Text('搜索', style: TextStyle(color: Colors.white, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    // 回顶部按钮
+                    FloatingActionButton(
+                      mini: true,
+                      heroTag: 'search_back_to_top',
+                      onPressed: _scrollToTop,
+                      child: Icon(Icons.arrow_upward),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          // 下载按钮（右下角，仅选中后显示）
+          if (_selectedIds.isNotEmpty)
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton.extended(
+                onPressed: _download,
+                icon: Icon(Icons.download),
+                label: Text('下载 (${_selectedIds.length})'),
+              ),
+            ),
           // 搜索区域（平滑移动到左侧）
           AnimatedPositioned(
             duration: Duration(milliseconds: 300),
