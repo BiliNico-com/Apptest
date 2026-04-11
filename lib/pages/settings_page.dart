@@ -668,6 +668,9 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
       return;
     }
     
+    print('准备保存日志到: $downloadDir');
+    print('日志文件路径: ${logger.logPath}');
+    
     final savedPath = await logger.saveToDirectory(downloadDir);
     if (savedPath != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -675,7 +678,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存日志失败，请检查存储权限')),
+        SnackBar(content: Text('保存日志失败: $downloadDir')),
       );
     }
   }
