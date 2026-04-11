@@ -298,8 +298,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             children: [
               Column(
                 children: [
-                  // 顶部空间（避免内容被AppBar遮挡）
-                  SizedBox(height: kToolbarHeight + MediaQuery.of(context).padding.top),
                   // 设置区域（可收缩）
                   AnimatedContainer(
                     duration: Duration(milliseconds: 200),
@@ -394,6 +392,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   }
   
   Widget _buildSettings() {
+    // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
+    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    
     return Consumer<AppState>(
       builder: (context, appState, _) {
         final siteType = appState.crawler?.siteType ?? "original";
@@ -404,7 +405,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           _selectedType = 'list';
         }
         
-        return Card(
+        return Column(
+          children: [
+            // 顶部空间（避免被AppBar遮挡）
+            SizedBox(height: topPadding),
+            Card(
           margin: EdgeInsets.all(16),
           child: Padding(
             padding: EdgeInsets.all(16),
@@ -468,6 +473,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               ],
             ),
           ),
+        ),
+          ],
         );
       },
     );
