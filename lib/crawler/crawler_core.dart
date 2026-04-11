@@ -977,7 +977,4 @@ class CrawlerCore {
     _initDio();
     _detectSiteType();
   }
-  
-  /// 获取当前站点类型
-  String get siteType => _siteType;
 }

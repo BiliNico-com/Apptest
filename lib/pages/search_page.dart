@@ -319,6 +319,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                       ),
                     ),
                   ),
+              ],
             ),
           ),
         ],
