@@ -38,6 +38,30 @@ jobs:
           echo "android directory will be created by flutter create"
         fi
     
+    - name: Fix Android build config
+      run: |
+        # 设置 compileSdkVersion 34
+        sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 34/g' android/app/build.gradle
+        sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 34/g' android/app/build.gradle
+        
+        # 修复 Kotlin 版本冲突
+        echo "android.useAndroidX=true" >> android/gradle.properties
+        echo "android.enableJetifier=true" >> android/gradle.properties
+        
+        # 在 android/build.gradle 中添加 Kotlin 版本强制
+        if grep -q "ext.kotlin_version" android/build.gradle; then
+          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.0"/g' android/build.gradle
+        else
+          sed -i '/buildscript {/a\    ext.kotlin_version = "1.9.0"' android/build.gradle
+        fi
+        
+        # 添加 dependencies classpath
+        if ! grep -q "kotlin-gradle-plugin" android/build.gradle; then
+          sed -i '/dependencies {/a\        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"' android/build.gradle
+        fi
+        
+        echo "Build config fixed"
+    
     - name: Install dependencies
       run: flutter pub get
     
