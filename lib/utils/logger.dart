@@ -71,7 +71,17 @@ class Logger {
     if (_logFile == null || !await _logFile!.exists()) {
       return '暂无日志';
     }
-    return await _logFile!.readAsString();
+    try {
+      return await _logFile!.readAsString();
+    } catch (e) {
+      // UTF-8解码失败时，尝试用Latin1解码
+      try {
+        final bytes = await _logFile!.readAsBytes();
+        return String.fromCharCodes(bytes);
+      } catch (e2) {
+        return '日志读取失败: $e2';
+      }
+    }
   }
   
   // 清空日志
