@@ -55,12 +55,17 @@ class Logger {
     // 控制台输出
     print(line.trim());
     
-    // 文件写入
-    if (_enabled && _logFile != null) {
+    // 文件写入 - 总是写入，即使_enabled为false也要写入
+    if (_logFile != null) {
       try {
         await _logFile!.writeAsString(line, mode: FileMode.append);
       } catch (e) {
         print('Logger write failed: $e');
+      }
+    } else {
+      // 如果日志文件不存在，尝试重新创建
+      if (!_enabled) {
+        print('Logger: 日志未初始化，跳过写入');
       }
     }
   }

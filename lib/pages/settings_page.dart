@@ -39,10 +39,8 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 每次回到设置页时，刷新一次日志
-    if (_logContent.isNotEmpty) {
-      _refreshLog();
-    }
+    // 每次回到设置页时，都刷新一次日志（从文件读取）
+    _refreshLog();
   }
   
   @override
