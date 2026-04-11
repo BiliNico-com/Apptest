@@ -328,11 +328,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               ),
               // 页码跳转悬浮胶囊
               _buildBottomPageNavigation(),
-              // 悬浮按钮组（页码在上，回顶部按钮在下）
+              // 悬浮按钮组（设置按钮在上，回顶部按钮在下）- 移除页码显示
               if (_showBackToTop && appState.showBackToTop)
                 Positioned(
                   // 右下角且选中视频时，需要避开下载按钮
-                  bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 140.0 : 80.0,
+                  bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 160.0 : 80.0,
                   left: appState.backToTopPosition == 'left' ? 16 : null,
                   right: appState.backToTopPosition == 'right' ? 16 : null,
                   child: Column(
@@ -341,20 +341,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         ? CrossAxisAlignment.start 
                         : CrossAxisAlignment.end,
                     children: [
-                      // 悬浮页码显示
-                      if (_loadedPage > 0)
-                        Container(
-                          margin: EdgeInsets.only(bottom: 8),
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            '第 $_loadedPage 页',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ),
                       // 设置按钮（设置区域隐藏时显示）
                       if (!_showSettings)
                         GestureDetector(

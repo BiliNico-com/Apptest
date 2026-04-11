@@ -347,7 +347,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               // 右下角且选中视频时，需要避开下载按钮
               final isRight = appState.backToTopPosition == 'right';
               final hasSelection = _selectedIds.isNotEmpty;
-              final bottomOffset = (isRight && hasSelection) ? 80.0 : 16.0;
+              // 增大偏移量避免与下载按钮重叠（FloatingActionButton.extended高度约56dp）
+              final bottomOffset = (isRight && hasSelection) ? 160.0 : 16.0;
               
               return Positioned(
                 bottom: bottomOffset,
