@@ -194,7 +194,43 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               ],
             ),
             actions: [
-              // 就绪状态（与搜索页一致）
+              // 已选数量
+              if (_selectedIds.isNotEmpty)
+                Container(
+                  margin: EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '已选 ${_selectedIds.length} 个',
+                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                  ),
+                ),
+              // 全选勾选框
+              if (_selectedIds.isNotEmpty)
+                IconButton(
+                  icon: Icon(
+                    _selectedIds.length == _videos.length 
+                      ? Icons.check_box 
+                      : Icons.check_box_outline_blank,
+                    color: Colors.blue,
+                  ),
+                  onPressed: () {
+                    final isAllSelected = _selectedIds.length == _videos.length;
+                    logger.ui('Batch', 'UI操作: ${isAllSelected ? "取消全选" : "全选"}');
+                    setState(() {
+                      if (isAllSelected) {
+                        _selectedIds.clear();
+                      } else {
+                        _selectedIds = _videos.map((v) => v.id).toSet();
+                      }
+                    });
+                  },
+                  tooltip: _selectedIds.length == _videos.length ? '取消全选' : '全选',
+                ),
+              // 就绪按钮
               Container(
                 margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -202,18 +238,16 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                   color: _status == '就绪' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(
-                  child: Text(
-                    _status,
-                    style: TextStyle(
-                      color: _status == '就绪' ? Colors.green : Colors.orange,
-                      fontSize: 12,
-                    ),
+                child: Text(
+                  _status,
+                  style: TextStyle(
+                    color: _status == '就绪' ? Colors.green : Colors.orange,
+                    fontSize: 12,
                   ),
                 ),
               ),
               SizedBox(width: 4),
-              // 隐私模式按钮
+              // 隐私按钮
               IconButton(
                 icon: Icon(
                   appState.privacyMode ? Icons.visibility_off : Icons.visibility,
@@ -238,56 +272,21 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     child: _showSettings ? _buildSettings() : SizedBox.shrink(),
                   ),
                   Expanded(child: _buildVideoGrid()),
-                  _buildBottomBar(),
                 ],
               ),
-              // 悬浮按钮组（左下角：页码+回顶部+已选数量，右下角：下载）
+              // 回顶部按钮（左下角）
               if (_showBackToTop && appState.showBackToTop)
                 Positioned(
                   bottom: 16,
                   left: 16,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 悬浮页码显示
-                      if (_currentPage > 0)
-                        Container(
-                          margin: EdgeInsets.only(right: 8),
-                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            '第 $_currentPage 页',
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ),
-                      // 回顶部按钮
-                      FloatingActionButton(
-                        mini: true,
-                        heroTag: 'batch_back_to_top',
-                        onPressed: _scrollToTop,
-                        child: Icon(Icons.arrow_upward),
-                      ),
-                      // 已选数量
-                      if (_selectedIds.isNotEmpty)
-                        Container(
-                          margin: EdgeInsets.only(left: 8),
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '已选 ${_selectedIds.length} 个',
-                            style: TextStyle(fontSize: 12, color: Colors.blue),
-                          ),
-                        ),
-                    ],
+                  child: FloatingActionButton(
+                    mini: true,
+                    heroTag: 'batch_back_to_top',
+                    onPressed: _scrollToTop,
+                    child: Icon(Icons.arrow_upward),
                   ),
                 ),
-              // 悬浮下载按钮（右下角）
+              // 下载按钮（右下角，仅选中后显示）
               if (_selectedIds.isNotEmpty)
                 Positioned(
                   bottom: 16,
