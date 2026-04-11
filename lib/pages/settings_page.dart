@@ -13,17 +13,36 @@ class SettingsPage extends StatefulWidget {
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
   Timer? _logRefreshTimer;
-  String _logContent = '';
-  bool _autoRefresh = false;
+  static String _logContent = '';  // 改为static，跨页面保持
+  static bool _autoRefresh = false;  // 改为static，跨页面保持
+  
+  @override
+  bool get wantKeepAlive => true;  // 保持状态
   
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       context.read<AppState>().init();
+      // 如果之前开启了自动刷新，恢复定时器
+      if (_autoRefresh) {
+        _startAutoRefresh();
+      } else {
+        // 自动加载一次日志
+        _refreshLog();
+      }
     });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 每次回到设置页时，刷新一次日志
+    if (_logContent.isNotEmpty) {
+      _refreshLog();
+    }
   }
   
   @override
@@ -62,6 +81,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // 必须调用，启用AutomaticKeepAliveClientMixin
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return Scaffold(

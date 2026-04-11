@@ -18,6 +18,9 @@ class AppState extends ChangeNotifier {
   // Debug模式
   bool debugMode = false;
   
+  // 实时日志开关
+  bool realtimeLogEnabled = false;
+  
   // 主题
   bool isDarkMode = true;
   
