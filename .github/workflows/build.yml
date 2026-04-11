@@ -23,42 +23,106 @@ jobs:
     - name: Generate platform files
       run: flutter create . --platforms android --project-name download_91 --org com.bilinico
     
-    - name: Merge AndroidManifest.xml
-      run: |
-        # flutter create 已经在 android/ 目录生成了文件
-        # 直接覆盖 AndroidManifest.xml
-        if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
-          # 确保目标目录存在
-          mkdir -p android/app/src/main/res/xml
-          # file_paths.xml 已经存在，不需要额外操作
-          echo "AndroidManifest.xml already in place"
-        fi
-        # 如果 android 目录不存在（首次构建），需要处理
-        if [ ! -d "android" ]; then
-          echo "android directory will be created by flutter create"
-        fi
-    
     - name: Fix Android build config
       run: |
-        # 设置 compileSdkVersion 34
-        sed -i 's/compileSdkVersion [0-9]*/compileSdkVersion 34/g' android/app/build.gradle
-        sed -i 's/targetSdkVersion [0-9]*/targetSdkVersion 34/g' android/app/build.gradle
-        
-        # 修复 Kotlin 版本冲突
+        # 修复 app/build.gradle
+        cat > android/app/build.gradle << 'EOF'
+        plugins {
+            id "com.android.application"
+            id "kotlin-android"
+            id "dev.flutter.flutter-gradle-plugin"
+        }
+
+        def localProperties = new Properties()
+        def localPropertiesFile = rootProject.file('local.properties')
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.withReader('UTF-8') { reader ->
+                localProperties.load(reader)
+            }
+        }
+
+        def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+        if (flutterVersionCode == null) {
+            flutterVersionCode = '1'
+        }
+
+        def flutterVersionName = localProperties.getProperty('flutter.versionName')
+        if (flutterVersionName == null) {
+            flutterVersionName = '1.0'
+        }
+
+        android {
+            namespace "com.bilinico.download_91"
+            compileSdk 34
+            ndkVersion flutter.ndkVersion
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+
+            kotlinOptions {
+                jvmTarget = '1.8'
+            }
+
+            sourceSets {
+                main.java.srcDirs += 'src/main/kotlin'
+            }
+
+            defaultConfig {
+                applicationId "com.bilinico.download_91"
+                minSdk 21
+                targetSdk 34
+                versionCode flutterVersionCode.toInteger()
+                versionName flutterVersionName
+            }
+
+            buildTypes {
+                release {
+                    signingConfig signingConfigs.debug
+                }
+            }
+        }
+
+        flutter {
+            source '../..'
+        }
+
+        dependencies {}
+        EOF
+
+        # 修复 settings.gradle
+        cat > android/settings.gradle << 'EOF'
+        pluginManagement {
+            def flutterSdkPath = {
+                def properties = new Properties()
+                file("local.properties").withInputStream { properties.load(it) }
+                def flutterSdkPath = properties.getProperty("flutter.sdk")
+                assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
+                return flutterSdkPath
+            }()
+
+            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
+        }
+
+        plugins {
+            id "dev.flutter.flutter-plugin-loader" version "1.0.0"
+            id "com.android.application" version "7.3.0" apply false
+            id "org.jetbrains.kotlin.android" version "1.9.0" apply false
+        }
+
+        include ":app"
+        EOF
+
+        # 确保 gradle.properties 有正确的配置
         echo "android.useAndroidX=true" >> android/gradle.properties
         echo "android.enableJetifier=true" >> android/gradle.properties
-        
-        # 在 android/build.gradle 中添加 Kotlin 版本强制
-        if grep -q "ext.kotlin_version" android/build.gradle; then
-          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.0"/g' android/build.gradle
-        else
-          sed -i '/buildscript {/a\    ext.kotlin_version = "1.9.0"' android/build.gradle
-        fi
-        
-        # 添加 dependencies classpath
-        if ! grep -q "kotlin-gradle-plugin" android/build.gradle; then
-          sed -i '/dependencies {/a\        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"' android/build.gradle
-        fi
         
         echo "Build config fixed"
     
