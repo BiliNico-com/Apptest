@@ -122,15 +122,15 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     'list': '视频',
     'ori': '91原创',
     'hot': '当前最热',
-    'topm': '本月最热',
-    'top': '每月最热',
-    'longer': '10分钟以上',
-    'long': '20分钟以上',
-    'rf': '本月收藏',
-    'tf': '最近加精',
+    'top': '本月最热',
+    'topm': '每月最热',
+    'long': '10分钟以上',
+    'longer': '20分钟以上',
+    'tf': '本月收藏',
+    'rf': '最近加精',
     'hd': '高清',
-    'mf': '本月讨论',
-    'md': '收藏最多',
+    'md': '本月讨论',
+    'mf': '收藏最多',
   };
   
   // original 站点的列表类型
