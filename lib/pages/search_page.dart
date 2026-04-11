@@ -656,19 +656,17 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     video.cover != null
                         ? Image.network(video.cover!, fit: BoxFit.cover)
                         : Icon(Icons.video_file, size: 50, color: Colors.grey),
-                    // 毛玻璃模糊遮罩
+                    // 毛玻璃模糊遮罩（仅模糊封面）
                     if (appState.privacyMode)
                       Positioned.fill(
-                        child: ClipRect(
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                            child: Container(
-                              color: Colors.black.withOpacity(0.3),
-                            ),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                          child: Container(
+                            color: Colors.black.withOpacity(0.3),
                           ),
                         ),
                       ),
-                    // 选中标记
+                    // 选中标记（右上角，在毛玻璃之上）
                     if (selected)
                       Positioned(
                         top: 8,
@@ -682,11 +680,11 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                           child: Icon(Icons.check, color: Colors.white, size: 16),
                         ),
                       ),
-                    // 时长标签
+                    // 时长标签（右下角，在毛玻璃之上）
                     if (video.duration != null)
                       Positioned(
-                        bottom: 50,
-                        right: 4,
+                        bottom: 8,
+                        right: 8,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(

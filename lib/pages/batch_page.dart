@@ -617,28 +617,21 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         child: Icon(Icons.play_circle, size: 48, color: Colors.white54),
                       ),
                 ),
-                // 时长标签
-                if (video.duration != null)
-                  Positioned(
-                    bottom: 50,
-                    right: 4,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        video.duration!,
-                        style: TextStyle(color: Colors.white, fontSize: 10),
+                // 毛玻璃模糊遮罩（仅模糊封面）
+                if (appState.privacyMode)
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                      child: Container(
+                        color: Colors.black.withOpacity(0.3),
                       ),
                     ),
                   ),
-                // 选中标记
+                // 选中标记（右上角，在毛玻璃之上）
                 if (isSelected)
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: 8,
+                    right: 8,
                     child: Container(
                       padding: EdgeInsets.all(4),
                       decoration: BoxDecoration(
@@ -648,15 +641,20 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       child: Icon(Icons.check, color: Colors.white, size: 16),
                     ),
                   ),
-                // 毛玻璃模糊遮罩
-                if (appState.privacyMode)
-                  Positioned.fill(
-                    child: ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                        child: Container(
-                          color: Colors.black.withOpacity(0.3),
-                        ),
+                // 时长标签（右下角，在毛玻璃之上）
+                if (video.duration != null)
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black87,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        video.duration!,
+                        style: TextStyle(color: Colors.white, fontSize: 10),
                       ),
                     ),
                   ),
