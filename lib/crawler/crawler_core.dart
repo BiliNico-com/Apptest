@@ -157,11 +157,8 @@ class CrawlerCore {
     final videos = <VideoInfo>[];
     final seenIds = <String>{};
     
-    print('[Crawler] 解析 porn91 HTML, 长度: ${html.length}');
-    
     // 策略1：只匹配 col-lg-3 容器内的视频卡片（过滤 col-lg-8 广告）
     final containerMatches = CrawlerConfig.containerPattern.allMatches(html).toList();
-    print('[Crawler] 找到 ${containerMatches.length} 个 col-lg-3 视频容器');
     
     for (var i = 0; i < containerMatches.length; i++) {
       final match = containerMatches[i];
@@ -181,15 +178,21 @@ class CrawlerCore {
       
       // 提取封面（优先从 playvthumb_XXXXXX，后备从 img src）
       String? cover;
+      String? coverId;
       final playvthumbMatch = CrawlerConfig.playvthumbPattern.firstMatch(wellContent);
       if (playvthumbMatch != null) {
-        cover = VideoInfo.buildCoverUrl(playvthumbMatch.group(1)!);
-        print('[Crawler] 从 playvthumb 提取封面: $cover');
+        coverId = playvthumbMatch.group(1)!;
+        cover = VideoInfo.buildCoverUrl(coverId);
       } else {
         // 后备方案：从 img 标签提取封面
         final imgMatch = RegExp(r'<img[^>]*src="([^"]+)"[^>]*>').firstMatch(wellContent);
         if (imgMatch != null) {
           var imgSrc = imgMatch.group(1)!;
+          // 从img src提取封面ID
+          final idMatch = RegExp(r'/(\d+)\.jpe?g').firstMatch(imgSrc);
+          if (idMatch != null) {
+            coverId = idMatch.group(1);
+          }
           if (imgSrc.startsWith('http')) {
             cover = imgSrc;
           } else if (imgSrc.startsWith('//')) {
@@ -197,9 +200,6 @@ class CrawlerCore {
           } else if (imgSrc.isNotEmpty) {
             cover = '$baseUrl$imgSrc';
           }
-          print('[Crawler] 从 img src 提取封面: $cover');
-        } else {
-          print('[Crawler] 封面提取失败: viewkey=$viewkey');
         }
       }
       
@@ -208,6 +208,9 @@ class CrawlerCore {
       if (titleMatch == null) continue;
       
       final title = titleMatch.group(1)!.trim();
+      
+      // 日志记录配对信息
+      logger.log('List', '[$i] viewkey=$viewkey, 封面ID=$coverId, 标题=${title.length > 20 ? title.substring(0, 20) + "..." : title}');
       
       // 提取作者
       String? author;
@@ -247,7 +250,7 @@ class CrawlerCore {
       ));
     }
     
-    print('[Crawler] 解析到 ${videos.length} 个视频');
+    logger.log('Crawler', '解析到 ${videos.length} 个视频');
     return videos;
   }
   
