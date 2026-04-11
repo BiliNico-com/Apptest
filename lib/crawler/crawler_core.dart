@@ -384,25 +384,69 @@ class CrawlerCore {
   /// 获取视频详情（m3u8地址等）
   Future<VideoInfo?> getVideoDetail(VideoInfo video) async {
     try {
+      await logger.i('Crawler', '获取视频详情: ${video.url}');
       final resp = await _dio.get(video.url);
       final html = resp.data.toString();
+      await logger.d('Crawler', '视频页面响应: ${resp.statusCode}, 长度: ${html.length}');
       
-      // 提取 m3u8 URL
-      final m3u8Match = CrawlerConfig.m3u8Pattern.firstMatch(html);
-      if (m3u8Match != null) {
+      String? m3u8Url;
+      
+      // 策略1: 从 <source> 标签提取
+      final sourceMatch = RegExp(r'<source[^>]+src="([^"]+\.m3u8[^"]*)"', caseSensitive: false).firstMatch(html);
+      if (sourceMatch != null) {
+        m3u8Url = sourceMatch.group(1);
+        await logger.i('Crawler', '从 <source> 标签发现 m3u8: $m3u8Url');
+      }
+      
+      // 策略2: 搜索任何 .m3u8 URL
+      if (m3u8Url == null) {
+        final m3u8Match = CrawlerConfig.m3u8Pattern.firstMatch(html);
+        if (m3u8Match != null) {
+          m3u8Url = m3u8Match.group(1);
+          await logger.i('Crawler', '从通用正则发现 m3u8: $m3u8Url');
+        }
+      }
+      
+      // 策略3: 从 JavaScript 变量提取
+      if (m3u8Url == null) {
+        final jsPatterns = [
+          r'(?:video_url|sourceUrl|videoUrl|m3u8_url|file)\s*=\s*["\']([^"\']+\.m3u8[^"\']*)["\']',
+          r'(?:video_url|sourceUrl|videoUrl|m3u8_url|file)\s*=\s*["\'](https?://[^"\']+)["\']',
+        ];
+        for (final pattern in jsPatterns) {
+          final match = RegExp(pattern, caseSensitive: false).firstMatch(html);
+          if (match != null) {
+            m3u8Url = match.group(1);
+            await logger.i('Crawler', '从 JS 变量发现 m3u8: $m3u8Url');
+            break;
+          }
+        }
+      }
+      
+      if (m3u8Url != null) {
+        // 提取作者信息
+        String? author = video.author;
+        if (author == null) {
+          final authorMatch = CrawlerConfig.authorPattern.firstMatch(html);
+          if (authorMatch != null) {
+            author = authorMatch.group(1)?.trim();
+          }
+        }
+        
         return VideoInfo(
           id: video.id,
           url: video.url,
           title: video.title,
           cover: video.cover,
-          author: video.author,
-          m3u8Url: m3u8Match.group(1),
+          author: author,
+          m3u8Url: m3u8Url,
         );
       }
       
+      await logger.e('Crawler', '未找到 m3u8 地址');
       return null;
     } catch (e) {
-      print('[Crawler] 获取视频详情失败: $e');
+      await logger.e('Crawler', '获取视频详情失败: $e');
       return null;
     }
   }

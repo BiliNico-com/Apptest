@@ -94,6 +94,7 @@ class DownloadManager extends ChangeNotifier {
     if (_crawler == null || _downloadDir.isEmpty) {
       task.status = DownloadStatus.failed;
       task.error = '未配置爬虫或下载目录';
+      await logger.e('DownloadManager', '未配置爬虫或下载目录: crawler=${_crawler != null}, dir=$_downloadDir');
       notifyListeners();
       return;
     }
@@ -102,6 +103,7 @@ class DownloadManager extends ChangeNotifier {
     notifyListeners();
     
     await logger.i('DownloadManager', '开始下载: ${task.video.title}');
+    await logger.d('DownloadManager', '视频URL: ${task.video.url}');
     
     try {
       // 1. 获取视频详情（m3u8地址）
@@ -116,10 +118,12 @@ class DownloadManager extends ChangeNotifier {
         return;
       }
       
-      await logger.i('DownloadManager', '获取到 m3u8 地址');
+      await logger.i('DownloadManager', '获取到 m3u8 地址: ${detail.m3u8Url}');
       
       // 2. 下载视频
-      final savePath = '$_downloadDir/${task.video.title}.mp4';
+      // 清理文件名中的非法字符
+      final safeTitle = task.video.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+      final savePath = '$_downloadDir/$safeTitle.mp4';
       await logger.i('DownloadManager', '保存路径: $savePath');
       
       // 设置进度回调
