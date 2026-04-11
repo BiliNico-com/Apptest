@@ -149,7 +149,6 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
               }).toList(),
               onChanged: (site) async {
                 if (site != null) {
-                  // 先记录日志，再执行操作
                   print('[Settings] 选择站点: $site');
                   appState.changeSite(site);
                   print('[Settings] 站点已切换, currentSite=${appState.currentSite}');
@@ -260,6 +259,9 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
         return;
       }
     } catch (e) {
+      if (logger.enableNetworkLog) {
+        await logger.w('Settings', 'file_picker 不可用: $e');
+      }
     }
     
     // 如果 file_picker 失败，显示手动输入对话框
@@ -552,27 +554,11 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
             ),
             if (appState.debugMode) ...[
               SizedBox(height: 8),
-              // 日志类型过滤复选框
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                  ],
-                ),
-              ),
-              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await _refreshLog();
-                      },
+                      onPressed: _refreshLog,
                       icon: Icon(Icons.refresh, size: 18),
                       label: Text('刷新日志'),
                     ),

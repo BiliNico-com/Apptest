@@ -426,7 +426,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       _status = '搜索中...';
     });
     
-    
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     if (crawler == null) {
@@ -681,7 +680,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     // 时长标签（右下角，在毛玻璃之上）
                     if (video.duration != null)
                       Positioned(
-                        bottom: 50,
+                        bottom: 8,
                         right: 8,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -779,7 +778,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   /// 下载选中的视频
   Future<void> _download() async {
     if (_selectedIds.isEmpty) return;
-    
     
     final appState = context.read<AppState>();
     
