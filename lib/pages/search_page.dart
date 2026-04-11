@@ -294,6 +294,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
           ),
         ],
       ),
+      ),
       body: Column(
         children: [
           // 搜索框区域（可收缩）
