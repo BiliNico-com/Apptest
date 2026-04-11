@@ -521,22 +521,48 @@ class CrawlerCore {
         }
         
         // 策略 B: 直接查找 <source> 标签
+        // 注意：页面可能有多个 source，第一个可能是广告，需要匹配视频ID
         if (videoUrl == null) {
           await logger.d('Crawler', '[策略B] 查找 <source> 标签...');
+          
+          // 从封面URL提取视频ID（如 https://.../thumb/1192622.jpg -> 1192622）
+          String? videoId;
+          if (video.cover != null && video.cover!.isNotEmpty) {
+            final idMatch = RegExp(r'/(\d+)\.jpe?g').firstMatch(video.cover!);
+            if (idMatch != null) {
+              videoId = idMatch.group(1);
+              await logger.d('Crawler', '[策略B] 从封面提取视频ID: $videoId');
+            }
+          }
+          
           final sourcePattern = RegExp(r'''<source[^>]+src=["']([^"']+)["']''', caseSensitive: false);
           final sourceMatches = sourcePattern.allMatches(html).toList();
           await logger.d('Crawler', '[策略B] 找到 ${sourceMatches.length} 个 <source> 标签');
           
-          for (var i = 0; i < sourceMatches.length && videoUrl == null; i++) {
+          // 优先匹配视频ID的source，其次取最后一个source（通常第一个是广告）
+          for (var i = 0; i < sourceMatches.length; i++) {
             final match = sourceMatches[i];
             final src = match.group(1)?.replaceAll('&amp;', '&') ?? '';
             await logger.d('Crawler', '[策略B] 检查第 ${i+1} 个source: $src');
             
             if (src.contains('.mp4') || src.contains('.m3u8')) {
-              videoUrl = src;
-              extractionMethod = 'source标签';
-              await logger.i('Crawler', '[策略B成功] 从 <source> 提取视频: $videoUrl');
+              // 如果有视频ID，优先匹配包含该ID的URL
+              if (videoId != null && src.contains(videoId)) {
+                videoUrl = src;
+                extractionMethod = 'source标签(ID匹配)';
+                await logger.i('Crawler', '[策略B成功] 从 <source> 提取视频(ID匹配): $videoUrl');
+                break;  // 找到匹配的，立即退出
+              }
+              // 否则记录为候选（取最后一个）
+              if (videoUrl == null || i == sourceMatches.length - 1) {
+                videoUrl = src;
+                extractionMethod = 'source标签';
+              }
             }
+          }
+          
+          if (videoUrl != null) {
+            await logger.i('Crawler', '[策略B成功] 最终选择: $videoUrl');
           }
         }
         
