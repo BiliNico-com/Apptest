@@ -16,7 +16,8 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    // 延迟加载，避免在initState中使用context
+    Future.microtask(() => _loadHistory());
   }
 
   @override

@@ -20,6 +20,7 @@ class CrawlerCore {
   bool _pauseFlag = false;
   
   Database? _db;
+  bool _dbInitialized = false;
   
   // 回调
   Function(String msg, String level)? onLog;
@@ -32,7 +33,7 @@ class CrawlerCore {
     Dio? dio,
   }) : _dio = dio ?? Dio() {
     _initDio();
-    _initDb();
+    // 数据库懒加载，不在此初始化
   }
 
   void _initDio() {
@@ -68,25 +69,37 @@ class CrawlerCore {
 
   /// 初始化数据库
   Future<void> _initDb() async {
-    final dbPath = await getDatabasesPath();
-    _db = await openDatabase(
-      '$dbPath/download_history.db',
-      onCreate: (db, version) {
-        return db.execute('''
-          CREATE TABLE IF NOT EXISTS download_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id TEXT UNIQUE,
-            title TEXT,
-            url TEXT,
-            file_path TEXT,
-            upload_date TEXT,
-            download_time TEXT,
-            file_exists INTEGER DEFAULT 1
-          )
-        ''');
-      },
-      version: 1,
-    );
+    if (_dbInitialized) return;
+    try {
+      final dbPath = await getDatabasesPath();
+      _db = await openDatabase(
+        '$dbPath/download_history.db',
+        onCreate: (db, version) {
+          return db.execute('''
+            CREATE TABLE IF NOT EXISTS download_history (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              video_id TEXT UNIQUE,
+              title TEXT,
+              url TEXT,
+              file_path TEXT,
+              upload_date TEXT,
+              download_time TEXT,
+              file_exists INTEGER DEFAULT 1
+            )
+          ''');
+        },
+        version: 1,
+      );
+      _dbInitialized = true;
+    } catch (e) {
+      print('[Crawler] 数据库初始化失败: $e');
+    }
+  }
+  
+  /// 确保数据库已初始化
+  Future<Database?> _getDb() async {
+    await _initDb();
+    return _db;
   }
 
   // ==================== 获取视频列表 ====================
@@ -417,9 +430,10 @@ class CrawlerCore {
 
   /// 保存到历史记录
   Future<void> _saveToHistory(VideoInfo video, String filePath) async {
-    if (_db == null) return;
+    final db = await _getDb();
+    if (db == null) return;
     
-    await _db!.insert(
+    await db.insert(
       'download_history',
       {
         'video_id': video.id,
@@ -434,9 +448,10 @@ class CrawlerCore {
 
   /// 检查是否已下载
   Future<bool> isDownloaded(String videoId) async {
-    if (_db == null) return false;
+    final db = await _getDb();
+    if (db == null) return false;
     
-    final result = await _db!.query(
+    final result = await db.query(
       'download_history',
       where: 'video_id = ?',
       whereArgs: [videoId],
@@ -450,9 +465,10 @@ class CrawlerCore {
     int limit = 50,
     int offset = 0,
   }) async {
-    if (_db == null) return [];
+    final db = await _getDb();
+    if (db == null) return [];
     
-    return await _db!.query(
+    return await db.query(
       'download_history',
       orderBy: 'download_time DESC',
       limit: limit,
