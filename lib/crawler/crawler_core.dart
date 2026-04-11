@@ -558,25 +558,19 @@ class CrawlerCore {
               final src = srcMatches[i].group(1)?.replaceAll('&amp;', '&') ?? '';
               
               if (src.contains('.mp4') || src.contains('.m3u8')) {
-                // 如果有视频ID，优先匹配包含该ID的URL
+                // 如果有视频ID，必须匹配包含该ID的URL
                 if (videoId != null && src.contains(videoId)) {
                   videoUrl = src;
                   extractionMethod = 'strencode2解码(ID匹配)';
                   await logger.log('Crawler', '[策略A] src[$i] ID匹配成功: $src');
                   break;
                 }
-                // 否则记录为候选（取最后一个）
-                if (videoUrl == null || i == srcMatches.length - 1) {
-                  videoUrl = src;
-                  extractionMethod = 'strencode2解码';
-                  await logger.log('Crawler', '[策略A] src[$i] 作为候选: $src');
-                }
+                // 不匹配ID的不返回，继续尝试策略B
               }
             }
           } catch (e) {
             await logger.log('Crawler', '[策略A] strencode2 解码失败: $e');
           }
-        } else {
         }
         
         // 策略 B: 直接查找 <source> 标签
@@ -588,7 +582,9 @@ class CrawlerCore {
           
           await logger.log('Crawler', '找到 ${sourceMatches.length} 个source标签');
           
-          // 优先匹配视频ID的source，其次取最后一个source（通常第一个是广告）
+          String? candidateUrl;
+          
+          // 优先匹配视频ID的source
           for (var i = 0; i < sourceMatches.length; i++) {
             final match = sourceMatches[i];
             final src = match.group(1)?.replaceAll('&amp;', '&') ?? '';
@@ -601,16 +597,17 @@ class CrawlerCore {
                 await logger.log('Crawler', 'source[$i] ID匹配成功: $src');
                 break;  // 找到匹配的，立即退出
               }
-              // 否则记录为候选（取最后一个）
-              if (videoUrl == null || i == sourceMatches.length - 1) {
-                videoUrl = src;
-                extractionMethod = 'source标签';
-                await logger.log('Crawler', 'source[$i] 作为候选: $src');
-              }
+              // 保存候选（取最后一个）
+              candidateUrl = src;
+              await logger.log('Crawler', 'source[$i] 作为候选: $src');
             }
           }
           
-          if (videoUrl != null) {
+          // 如果没有ID匹配，使用候选URL
+          if (videoUrl == null && candidateUrl != null) {
+            videoUrl = candidateUrl;
+            extractionMethod = 'source标签';
+            await logger.log('Crawler', '使用候选URL: $candidateUrl');
           }
         }
         
