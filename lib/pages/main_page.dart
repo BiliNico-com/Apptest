@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'batch_page.dart';
 import 'search_page.dart';
 import 'download_page.dart';
 import 'settings_page.dart';
+import '../services/app_state.dart';
 import '../utils/logger.dart';
 
 class MainPage extends StatefulWidget {
@@ -32,6 +34,16 @@ class _MainPageState extends State<MainPage> {
     Future.microtask(() {
       logger.i('MainPage', '应用启动, 初始页面: ${_pageNames[_currentIndex]}');
     });
+  }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 设置导航函数
+    final appState = context.read<AppState>();
+    appState.navigateToPage = (index) {
+      goToPage(index);
+    };
   }
 
   @override

@@ -192,6 +192,43 @@ class DownloadManager extends ChangeNotifier {
     }
   }
   
+  /// 开始任务
+  void startTask(String taskId) {
+    final task = _taskMap[taskId];
+    if (task != null && task.status == DownloadStatus.pending) {
+      _startDownload(task);
+    }
+  }
+  
+  /// 暂停任务
+  void pauseTask(String taskId) {
+    final task = _taskMap[taskId];
+    if (task != null && task.status == DownloadStatus.downloading) {
+      task.status = DownloadStatus.paused;
+      // TODO: 实现暂停下载逻辑
+      notifyListeners();
+    }
+  }
+  
+  /// 继续任务
+  void resumeTask(String taskId) {
+    final task = _taskMap[taskId];
+    if (task != null && task.status == DownloadStatus.paused) {
+      _startDownload(task);
+    }
+  }
+  
+  /// 重试任务
+  void retryTask(String taskId) {
+    final task = _taskMap[taskId];
+    if (task != null && task.status == DownloadStatus.failed) {
+      task.status = DownloadStatus.pending;
+      task.error = null;
+      task.progress = 0;
+      _startDownload(task);
+    }
+  }
+  
   /// 取消下载
   void cancelTask(String taskId) {
     final task = _taskMap[taskId];

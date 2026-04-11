@@ -117,6 +117,7 @@ class Logger {
   // 保存日志到指定目录
   Future<String?> saveToDirectory(String targetDir) async {
     if (_logFile == null || !await _logFile!.exists()) {
+      print('Logger: 日志文件不存在');
       return null;
     }
     
@@ -124,9 +125,16 @@ class Logger {
       final content = await _logFile!.readAsString();
       final now = DateTime.now();
       final fileName = '91Download_log_${DateFormat('yyyyMMdd_HHmmss').format(now)}.txt';
-      final targetFile = File('$targetDir/$fileName');
       
+      // 确保目标目录存在
+      final dir = Directory(targetDir);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      
+      final targetFile = File('$targetDir/$fileName');
       await targetFile.writeAsString(content);
+      print('Logger: 日志已保存到 ${targetFile.path}');
       return targetFile.path;
     } catch (e) {
       print('Save log to directory failed: $e');

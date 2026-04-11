@@ -300,8 +300,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
           action: SnackBarAction(
             label: '查看',
             onPressed: () {
-              // 切换到下载页面
-              DefaultTabController.of(context).animateTo(3);
+              // 切换到下载页面（索引2）
+              appState.navigateToPage?.call(2);
             },
           ),
         ),

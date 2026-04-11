@@ -29,6 +29,10 @@ class AppState extends ChangeNotifier {
   bool showBackToTop = true;
   String backToTopPosition = 'right'; // 'left' 或 'right'
 
+  // 当前页面索引（用于导航）
+  int currentPageIndex = 0;
+  Function(int)? navigateToPage;  // 由 MainPage 设置
+
   // 爬虫实例
   CrawlerCore? _crawler;
   
