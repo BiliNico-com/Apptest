@@ -296,25 +296,26 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // 顶部空间（避免内容被AppBar遮挡）
-          SizedBox(height: kToolbarHeight + MediaQuery.of(context).padding.top),
-          // 搜索框区域（可收缩）
-          AnimatedContainer(
-            duration: Duration(milliseconds: 200),
-            height: _showSettings ? null : 0,
-            child: _showSettings ? _buildSearchArea() : SizedBox.shrink(),
-          ),
-          // 结果列表
-          Expanded(
-            child: Stack(
-              children: [
-                _isLoading && (_results.isEmpty && _authorVideos.isEmpty)
-                    ? Center(child: CircularProgressIndicator())
-                    : _isAuthorMode && !_isAuthorPageMode
-                        ? _buildAuthorResults()
-                        : _buildVideoResults(),
+          // 视频列表（从顶部开始，延伸到AppBar下方）
+          Column(
+            children: [
+              // 搜索框区域（可收缩）
+              AnimatedContainer(
+                duration: Duration(milliseconds: 200),
+                height: _showSettings ? null : 0,
+                child: _showSettings ? _buildSearchArea() : SizedBox.shrink(),
+              ),
+              // 结果列表
+              Expanded(
+                child: Stack(
+                  children: [
+                    _isLoading && (_results.isEmpty && _authorVideos.isEmpty)
+                        ? Center(child: CircularProgressIndicator())
+                        : _isAuthorMode && !_isAuthorPageMode
+                            ? _buildAuthorResults()
+                            : _buildVideoResults(),
                 
                 // 悬浮按钮组（页码在上，返回按钮在中间，回顶部按钮在下）
                 Consumer<AppState>(
@@ -446,6 +447,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   Widget _buildSearchArea() {
     return Column(
       children: [
+        // 顶部空间（避免被AppBar遮挡）
+        SizedBox(height: kToolbarHeight + MediaQuery.of(context).padding.top),
         // 搜索框
         Padding(
           padding: EdgeInsets.all(16),
@@ -786,11 +789,14 @@ class _VideoResultsWidget extends StatelessWidget {
   }
 
   Widget _buildListView(BuildContext context) {
+    // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
+    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return ListView.builder(
           controller: scrollController,
-          padding: EdgeInsets.all(8),
+          padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
           itemCount: videos.length + (hasMore ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == videos.length) {
@@ -911,11 +917,14 @@ class _VideoResultsWidget extends StatelessWidget {
   }
 
   Widget _buildGridView(BuildContext context) {
+    // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
+    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return GridView.builder(
           controller: scrollController,
-          padding: EdgeInsets.all(8),
+          padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             childAspectRatio: 0.75,

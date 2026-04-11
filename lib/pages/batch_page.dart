@@ -506,10 +506,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   /// 列表模式
   Widget _buildListView() {
     final appState = context.read<AppState>();
+    // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
+    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
     
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
       itemCount: _videos.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == _videos.length) {
@@ -637,10 +639,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   /// 大图模式
   Widget _buildGridView() {
     final appState = context.read<AppState>();
+    // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
+    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
     
     return GridView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.all(8),
+      padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.75,
