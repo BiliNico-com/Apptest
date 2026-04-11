@@ -14,10 +14,12 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMixin {
   final _keywordController = TextEditingController();
+  final _pageController = TextEditingController();
   List<VideoInfo> _results = [];
   List<AuthorInfo> _authorResults = [];  // 作者搜索结果
   Set<String> _selectedIds = {};
   bool _isLoading = false;
+  bool _isLoadingMore = false;  // 是否正在加载更多
   bool _isAuthorMode = false;
   
   // 分页相关
@@ -52,12 +54,15 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _pageController.text = '1';
   }
   
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _keywordController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
   
@@ -93,7 +98,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     
     // 自动加载更多
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && !_isAuthorMode) {
+      if (!_isLoading && !_isLoadingMore && !_isAuthorMode) {
         if (_isAuthorPageMode && _authorHasMore) {
           _loadMoreAuthorVideos();
         } else if (!_isAuthorPageMode && _hasMore && _results.isNotEmpty) {
@@ -107,16 +112,16 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
   }
   
+  /// 加载更多（下一页）
   Future<void> _loadMore() async {
-    if (!_hasMore || _isLoading || _lastKeyword.isEmpty) return;
+    if (!_hasMore || _isLoading || _isLoadingMore || _lastKeyword.isEmpty) return;
     
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     if (crawler == null) return;
     
-    setState(() => _isLoading = true);
+    setState(() => _isLoadingMore = true);
     _currentPage++;
-    
     
     final newResults = await crawler.searchVideos(_lastKeyword, page: _currentPage, sort: _sortBy);
     
@@ -132,18 +137,18 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       });
     }
     
-    setState(() => _isLoading = false);
+    setState(() => _isLoadingMore = false);
   }
 
   /// 加载更多作者视频
   Future<void> _loadMoreAuthorVideos() async {
-    if (!_authorHasMore || _isLoading || _currentAuthorId.isEmpty) return;
+    if (!_authorHasMore || _isLoading || _isLoadingMore || _currentAuthorId.isEmpty) return;
     
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     if (crawler == null) return;
     
-    setState(() => _isLoading = true);
+    setState(() => _isLoadingMore = true);
     _authorCurrentPage++;
     
     final newVideos = await crawler.getAuthorVideos(_currentAuthorId, page: _authorCurrentPage);
@@ -160,7 +165,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       });
     }
     
-    setState(() => _isLoading = false);
+    setState(() => _isLoadingMore = false);
   }
 
   /// 退出作者主页模式
@@ -540,37 +545,42 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     );
                   },
                 ),
-                Spacer(),
-                // 页码跳转
+                SizedBox(width: 8),
+                // 页码跳转（输入框+跳转按钮）
                 if (_currentPage > 0)
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('页码: ', style: TextStyle(fontSize: 12)),
-                      IconButton(
-                        icon: Icon(Icons.first_page, size: 20),
-                        onPressed: _currentPage > 1 ? () => _goToPage(1) : null,
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.chevron_left, size: 20),
-                        onPressed: _currentPage > 1 ? () => _goToPage(_currentPage - 1) : null,
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
+                      Text('页: ', style: TextStyle(fontSize: 12)),
+                      SizedBox(
+                        width: 50,
+                        child: TextField(
+                          controller: _pageController,
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                            border: OutlineInputBorder(),
+                            isDense: true,
+                          ),
                         ),
-                        child: Text('$_currentPage', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.chevron_right, size: 20),
-                        onPressed: _hasMore ? () => _goToPage(_currentPage + 1) : null,
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
+                      SizedBox(width: 4),
+                      ElevatedButton(
+                        onPressed: _isLoading || _isLoadingMore ? null : () {
+                          final page = int.tryParse(_pageController.text);
+                          if (page != null && page > 0) {
+                            _goToPage(page);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                        ),
+                        child: _isLoading || _isLoadingMore
+                          ? SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+                          : Text('跳转', style: TextStyle(fontSize: 12)),
                       ),
                     ],
                   ),
@@ -585,10 +595,11 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
 
   void _toggleAll() {
     setState(() {
-      if (_selectedIds.length == _results.length) {
+      final currentVideos = _isAuthorPageMode ? _authorVideos : _results;
+      if (_selectedIds.length == currentVideos.length) {
         _selectedIds.clear();
       } else {
-        _selectedIds = _results.map((v) => v.id).toSet();
+        _selectedIds = currentVideos.map((v) => v.id).toSet();
       }
     });
   }
@@ -651,6 +662,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       _currentPage = 1;
       _hasMore = true;
       _lastKeyword = _keywordController.text;
+      _pageController.text = '1';
     });
     
     if (_isAuthorMode) {
@@ -696,10 +708,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       videos: videos,
       selectedIds: _selectedIds,
       hasMore: hasMore,
+      isLoadingMore: _isLoadingMore,
       isListMode: isListMode,
       scrollController: _scrollController,
       onToggleSelection: _toggleSelection,
-      onLoadMore: _isAuthorPageMode ? _loadMoreAuthorVideos : _loadMore,
       showSettings: _showSettings,
     );
   }
@@ -787,20 +799,20 @@ class _VideoResultsWidget extends StatelessWidget {
   final List<VideoInfo> videos;
   final Set<String> selectedIds;
   final bool hasMore;
+  final bool isLoadingMore;  // 是否正在加载更多
   final bool isListMode;
   final ScrollController scrollController;
   final Function(String) onToggleSelection;
-  final VoidCallback? onLoadMore;
   final bool showSettings;  // 设置区域是否显示
 
   _VideoResultsWidget({
     required this.videos,
     required this.selectedIds,
     required this.hasMore,
+    required this.isLoadingMore,
     required this.isListMode,
     required this.scrollController,
     required this.onToggleSelection,
-    this.onLoadMore,
     this.showSettings = true,
   });
 
@@ -821,9 +833,9 @@ class _VideoResultsWidget extends StatelessWidget {
         return ListView.builder(
           controller: scrollController,
           padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 8),
-          itemCount: videos.length + (hasMore ? 1 : 0),
+          itemCount: videos.length + (hasMore && isLoadingMore ? 1 : 0),
           itemBuilder: (context, index) {
-            // 加载更多指示器（跨整行居中显示）
+            // 加载更多指示器（仅在正在加载更多时显示）
             if (index == videos.length) {
               return Container(
                 height: 80,  // 固定高度
@@ -947,6 +959,14 @@ class _VideoResultsWidget extends StatelessWidget {
         ? 8.0 
         : kToolbarHeight + MediaQuery.of(context).padding.top + 8;
     
+    // 使用MediaQuery动态计算预览图尺寸
+    // 宽度：屏幕宽度的45%（crossAxisCount: 2，所以每个占50%，改为45%留出间距）
+    // 高度：按16:9比例缩放
+    final screenWidth = MediaQuery.of(context).size.width;
+    final itemWidth = screenWidth * 0.45;  // 45%宽度
+    final itemHeight = itemWidth * 9 / 16; // 16:9比例
+    final childAspectRatio = itemWidth / itemHeight;
+    
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return Column(
@@ -957,11 +977,11 @@ class _VideoResultsWidget extends StatelessWidget {
                 padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 0),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
-                  childAspectRatio: 0.75,
+                  childAspectRatio: childAspectRatio,
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                 ),
-                itemCount: videos.length,  // 只包含视频，不包含加载指示器
+                itemCount: videos.length,
                 itemBuilder: (context, index) {
                   final video = videos[index];
                   final selected = selectedIds.contains(video.id);
@@ -1057,13 +1077,12 @@ class _VideoResultsWidget extends StatelessWidget {
                       ),
                     ],
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        // 加载更多指示器（整行居中显示）
-        if (hasMore)
+        // 加载更多指示器（仅在正在加载更多时显示）
+        if (hasMore && isLoadingMore)
           Container(
             padding: EdgeInsets.all(16),
             alignment: Alignment.center,

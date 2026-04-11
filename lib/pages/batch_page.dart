@@ -15,9 +15,8 @@ class BatchPage extends StatefulWidget {
 
 class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixin {
   String _selectedType = 'list';
-  int _pageStart = 1;
-  int _pageEnd = 3;
-  int _currentPage = 0;  // 当前加载到的页码
+  int _currentPage = 1;  // 当前输入的页码
+  int _loadedPage = 0;   // 已加载的页码（用于判断是否还有更多）
   bool _hasMore = true;  // 是否还有更多
   List<VideoInfo> _videos = [];
   Set<String> _selectedIds = {};
@@ -25,6 +24,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   String _status = '就绪';
   double _progress = 0.0;
   String _progressText = '';
+  int _totalVideos = 0;  // 总视频数（用于显示"共Y页"的估算）
   
   // 滚动控制
   final ScrollController _scrollController = ScrollController();
@@ -32,6 +32,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   bool _showSettings = true;  // 是否显示设置区域
   double _lastScrollOffset = 0;  // 上次滚动位置
   double _appBarOpacity = 0.5;  // AppBar透明度（初始较透明）
+  final TextEditingController _pageController = TextEditingController();
   
   @override
   bool get wantKeepAlive => true;  // 保持页面状态
@@ -40,12 +41,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _pageController.text = '1';
   }
   
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
   
@@ -77,7 +80,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     }
     _lastScrollOffset = currentOffset;
     
-    // 自动加载更多
+    // 自动加载更多（仅在滚动到接近底部时触发）
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoading && _hasMore && _videos.isNotEmpty) {
         _loadMore();
@@ -89,6 +92,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
   }
   
+  /// 加载更多（下一页）
   Future<void> _loadMore() async {
     if (!_hasMore || _isLoading) return;
     
@@ -98,15 +102,16 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     
     setState(() => _isLoading = true);
     
-    _currentPage++;
+    _loadedPage++;
     
-    final newVideos = await crawler.getVideoList(_selectedType, _currentPage);
+    final newVideos = await crawler.getVideoList(_selectedType, _loadedPage);
     
     if (newVideos.isEmpty) {
       _hasMore = false;
     } else {
       setState(() {
         _videos.addAll(newVideos);
+        _totalVideos = _videos.length;
         // 如果返回结果少于每页数量，说明没有更多了
         if (newVideos.length < 24) {
           _hasMore = false;
@@ -309,13 +314,15 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     child: _showSettings ? _buildSettings() : SizedBox.shrink(),
                   ),
                   Expanded(child: _buildVideoGrid()),
+                  // 底部页码跳转区域
+                  _buildBottomPageNavigation(),
                 ],
               ),
               // 悬浮按钮组（页码在上，回顶部按钮在下）
               if (_showBackToTop && appState.showBackToTop)
                 Positioned(
                   // 右下角且选中视频时，需要避开下载按钮
-                  bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 80.0 : 16.0,
+                  bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 140.0 : 80.0,
                   left: appState.backToTopPosition == 'left' ? 16 : null,
                   right: appState.backToTopPosition == 'right' ? 16 : null,
                   child: Column(
@@ -325,7 +332,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         : CrossAxisAlignment.end,
                     children: [
                       // 悬浮页码显示
-                      if (_currentPage > 0)
+                      if (_loadedPage > 0)
                         Container(
                           margin: EdgeInsets.only(bottom: 8),
                           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -334,7 +341,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
-                            '第 $_currentPage 页',
+                            '第 $_loadedPage 页',
                             style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
                         ),
@@ -375,7 +382,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               // 下载按钮（右下角，仅选中后显示）
               if (_selectedIds.isNotEmpty)
                 Positioned(
-                  bottom: 16,
+                  bottom: 80,
                   right: 16,
                   child: FloatingActionButton.extended(
                     onPressed: _startDownload,
@@ -437,43 +444,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     ),
                   ],
                 ),
-                SizedBox(height: 16),
-                Row(
-                  children: [
-                    Text('页码: '),
-                    SizedBox(width: 50, child: TextFormField(
-                      initialValue: '1',
-                      textAlign: TextAlign.center,
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                      ),
-                      onChanged: (v) {
-                        _pageStart = int.tryParse(v) ?? 1;
-                      },
-                    )),
-                    Text(' ~ '),
-                    SizedBox(width: 50, child: TextFormField(
-                      initialValue: '3',
-                      textAlign: TextAlign.center,
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                      ),
-                      onChanged: (v) {
-                        _pageEnd = int.tryParse(v) ?? 3;
-                      },
-                    )),
-                    Spacer(),
-                    FilledButton(
-                      onPressed: _isLoading ? null : () async {
-                        print('[Batch] 加载按钮被点击');
-                        await _loadVideos();
-                      },
-                      child: _isLoading 
-                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                        : Text('加载'),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -482,6 +452,109 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         );
       },
     );
+  }
+
+  /// 底部页码跳转区域
+  Widget _buildBottomPageNavigation() {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            // 页码输入
+            Text('跳转页: ', style: TextStyle(fontSize: 12)),
+            SizedBox(
+              width: 60,
+              child: TextField(
+                controller: _pageController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onChanged: (v) {
+                  _currentPage = int.tryParse(v) ?? 1;
+                },
+              ),
+            ),
+            SizedBox(width: 8),
+            // 跳转按钮
+            ElevatedButton(
+              onPressed: _isLoading ? null : _goToPage,
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: _isLoading 
+                ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : Text('跳转'),
+            ),
+            Spacer(),
+            // 当前页/总页数显示
+            if (_loadedPage > 0)
+              Text(
+                '第$_loadedPage页',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 跳转到指定页
+  Future<void> _goToPage() async {
+    final targetPage = int.tryParse(_pageController.text) ?? 1;
+    if (targetPage < 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('请输入有效的页码')),
+      );
+      return;
+    }
+    
+    final appState = context.read<AppState>();
+    final crawler = appState.crawler;
+    if (crawler == null) {
+      setState(() {
+        _status = '请先选择站点';
+      });
+      return;
+    }
+    
+    setState(() {
+      _status = '加载中...';
+      _isLoading = true;
+      _videos.clear();
+      _selectedIds.clear();
+    });
+    
+    final videos = await crawler.getVideoList(_selectedType, targetPage);
+    
+    setState(() {
+      _videos = videos;
+      _totalVideos = videos.length;
+      _loadedPage = targetPage;
+      _currentPage = targetPage;
+      _isLoading = false;
+      _status = videos.isEmpty ? '无结果' : '就绪';
+      _hasMore = videos.length >= 24;  // 假设每页24个
+    });
+    
+    // 滚动到顶部
+    _scrollToTop();
   }
 
   Widget _buildProgress() {
@@ -501,10 +574,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     final appState = context.read<AppState>();
     final isListMode = appState.videoDisplayMode == 'list';
     
+    // 初始加载时显示loading
     if (_isLoading && _videos.isEmpty) {
       return Center(child: CircularProgressIndicator());
     }
     
+    // 无数据时显示提示
     if (_videos.isEmpty) {
       return Center(
         child: Column(
@@ -512,7 +587,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           children: [
             Icon(Icons.video_library_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('点击加载获取视频列表', style: TextStyle(color: Colors.grey)),
+            Text('输入页码并点击跳转', style: TextStyle(color: Colors.grey)),
           ],
         ),
       );
@@ -534,17 +609,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     return ListView.builder(
       controller: _scrollController,
       padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 8),
-      itemCount: _videos.length + (_hasMore ? 1 : 0),
+      itemCount: _videos.length,
       itemBuilder: (context, index) {
-        if (index == _videos.length) {
-          return Center(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-        
         final video = _videos[index];
         final isSelected = _selectedIds.contains(video.id);
         
@@ -658,7 +724,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     );
   }
   
-  /// 大图模式
+  /// 大图模式（网格视图）
   Widget _buildGridView() {
     final appState = context.read<AppState>();
     // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
@@ -666,6 +732,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     final topPadding = _showSettings 
         ? 8.0 
         : kToolbarHeight + MediaQuery.of(context).padding.top + 8;
+    
+    // 使用MediaQuery动态计算预览图尺寸
+    // 宽度：屏幕宽度的45%（crossAxisCount: 2，所以每个占50%，改为45%留出间距）
+    // 高度：按16:9比例缩放
+    final screenWidth = MediaQuery.of(context).size.width;
+    final itemWidth = screenWidth * 0.45;  // 45%宽度
+    final itemHeight = itemWidth * 9 / 16; // 16:9比例
+    final childAspectRatio = itemWidth / itemHeight;
     
     return Column(
       children: [
@@ -675,11 +749,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 0),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.75,
+              childAspectRatio: childAspectRatio,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
             ),
-            itemCount: _videos.length,  // 只包含视频，不包含加载指示器
+            itemCount: _videos.length,
             itemBuilder: (context, index) {
               final video = _videos[index];
               final isSelected = _selectedIds.contains(video.id);
@@ -798,8 +872,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             },
           ),
         ),
-        // 加载更多指示器（整行居中显示）
-        if (_hasMore)
+        // 加载更多指示器（仅在加载下一页时显示）
+        if (_isLoading && _videos.isNotEmpty)
           Container(
             padding: EdgeInsets.all(16),
             alignment: Alignment.center,
@@ -845,52 +919,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         ),
       ),
     );
-  }
-
-  Future<void> _loadVideos() async {
-    print('[Batch] _loadVideos 开始执行');
-    print('[Batch] _isLoading=$_isLoading, _selectedType=$_selectedType');
-    
-    setState(() {
-      _status = '加载中...';
-    });
-    
-    setState(() {
-      _isLoading = true;
-      _videos.clear();
-    });
-    print('[Batch] 状态已更新: _isLoading=$_isLoading, _status=$_status');
-    
-    final appState = context.read<AppState>();
-    final crawler = appState.crawler;
-    print('[Batch] crawler=${crawler != null ? "存在" : "null"}, currentSite=${appState.currentSite}');
-    
-    if (crawler == null) {
-      setState(() {
-        _isLoading = false;
-        _status = '请先选择站点';
-      });
-      return;
-    }
-    
-    final videos = <VideoInfo>[];
-    for (var p = _pageStart; p <= _pageEnd; p++) {
-      print('[Batch] 开始加载第 $p 页');
-      final list = await crawler.getVideoList(_selectedType, p);
-      print('[Batch] 第 $p 页返回 ${list.length} 个视频');
-      videos.addAll(list);
-    }
-    
-    
-    setState(() {
-      _videos = videos;
-      _selectedIds.clear();  // 默认不全选
-      _isLoading = false;
-      _status = videos.isEmpty ? '无结果' : '就绪';
-      _currentPage = _pageEnd;  // 记录当前页码
-      _hasMore = videos.length == (_pageEnd - _pageStart + 1) * 24;  // 假设每页24个
-    });
-    print('[Batch] 加载完成, _videos.length=${_videos.length}');
   }
 
   Future<void> _startDownload() async {

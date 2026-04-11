@@ -49,6 +49,9 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
           ),
           body: ListView(
             children: [
+              // 主题设置
+              _buildThemeSection(appState),
+              
               // 站点选择 - 必须先选择
               _buildSiteSection(appState),
               
@@ -70,6 +73,115 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
           ),
         );
       },
+    );
+  }
+
+  /// 主题设置区域
+  Widget _buildThemeSection(AppState appState) {
+    return Card(
+      margin: EdgeInsets.all(16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.palette, size: 20, color: Colors.purple),
+                SizedBox(width: 8),
+                Text('主题设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            SizedBox(height: 12),
+            // 跟随系统开关
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('跟随系统'),
+              subtitle: Text('自动切换日间/夜间模式'),
+              value: appState.themeMode == 2,
+              onChanged: (v) {
+                if (v) {
+                  appState.setAutoTheme();
+                } else {
+                  // 关闭跟随系统时，切换到日间模式
+                  appState.setLightMode();
+                }
+              },
+            ),
+            Divider(),
+            // 主题选择（跟随系统关闭时才可操作）
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('选择主题'),
+              subtitle: Text(
+                appState.themeMode == 2 
+                    ? '当前跟随系统' 
+                    : (appState.themeMode == 0 ? '日间模式' : '夜间模式')
+              ),
+              trailing: SegmentedButton<int>(
+                segments: [
+                  ButtonSegment(
+                    value: 0,
+                    icon: Icon(Icons.light_mode, size: 18),
+                    label: Text('日'),
+                  ),
+                  ButtonSegment(
+                    value: 1,
+                    icon: Icon(Icons.dark_mode, size: 18),
+                    label: Text('夜'),
+                  ),
+                  ButtonSegment(
+                    value: 2,
+                    icon: Icon(Icons.settings_suggest, size: 18),
+                    label: Text('自动'),
+                  ),
+                ],
+                selected: {appState.themeMode},
+                onSelectionChanged: (s) {
+                  final mode = s.first;
+                  switch (mode) {
+                    case 0:
+                      appState.setLightMode();
+                      break;
+                    case 1:
+                      appState.setDarkMode();
+                      break;
+                    case 2:
+                      appState.setAutoTheme();
+                      break;
+                  }
+                },
+              ),
+            ),
+            // 当前主题预览
+            SizedBox(height: 8),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    appState.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '当前: ${appState.isDarkMode ? "夜间模式" : "日间模式"}',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

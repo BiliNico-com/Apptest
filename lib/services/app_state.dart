@@ -22,8 +22,9 @@ class AppState extends ChangeNotifier {
   // 实时日志开关
   bool realtimeLogEnabled = false;
 
-  // 主题
-  bool isDarkMode = true;
+  // 主题模式: 0=日间, 1=夜间, 2=跟随系统
+  int themeMode = 1;  // 默认夜间模式
+  bool _isDarkMode = true;  // 内部记录（非跟随系统时的实际主题）
   
   // 回顶部按钮设置
   bool showBackToTop = true;
@@ -172,10 +173,59 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 切换主题
-  void toggleTheme() {
-    isDarkMode = !isDarkMode;
+  // 主题相关
+  // 当前实际主题（考虑跟随系统）
+  bool get isDarkMode {
+    if (themeMode == 2) {
+      // 跟随系统：通过MediaQuery获取系统主题
+      return WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+    }
+    return _isDarkMode;
+  }
+  
+  // 是否跟随系统
+  bool get isAutoTheme => themeMode == 2;
+  
+  // 切换主题模式
+  void setThemeMode(int mode) {
+    themeMode = mode;
+    if (mode == 2) {
+      // 跟随系统模式，根据系统主题设置_isDarkMode
+      _isDarkMode = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+    }
     notifyListeners();
+  }
+  
+  // 切换到日间模式
+  void setLightMode() {
+    themeMode = 0;
+    _isDarkMode = false;
+    notifyListeners();
+  }
+  
+  // 切换到夜间模式
+  void setDarkMode() {
+    themeMode = 1;
+    _isDarkMode = true;
+    notifyListeners();
+  }
+  
+  // 切换到跟随系统
+  void setAutoTheme() {
+    themeMode = 2;
+    notifyListeners();
+  }
+  
+  // 兼容旧代码的toggleTheme方法
+  void toggleTheme() {
+    if (themeMode == 2) {
+      // 当前是跟随系统，切换到日间模式
+      setLightMode();
+    } else {
+      // 切换日间/夜间
+      _isDarkMode = !_isDarkMode;
+      notifyListeners();
+    }
   }
 
   // 设置下载目录
