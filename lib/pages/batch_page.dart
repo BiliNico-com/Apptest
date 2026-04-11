@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../crawler/config.dart';
@@ -433,11 +434,16 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                                 child: Image.network(video.cover!, width: 120, height: 80, fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Icon(Icons.play_circle, size: 32, color: Colors.white54)),
                               ),
-                              // 模糊遮罩
+                              // 毛玻璃模糊遮罩
                               if (appState.privacyMode)
                                 Positioned.fill(
-                                  child: Container(
-                                    color: Colors.black.withOpacity(0.95),
+                                  child: ClipRect(
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                                      child: Container(
+                                        color: Colors.black.withOpacity(0.3),
+                                      ),
+                                    ),
                                   ),
                                 ),
                             ],
@@ -589,11 +595,16 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                             child: Icon(Icons.check, color: Colors.white, size: 16),
                           ),
                         ),
-                      // 模糊遮罩
+                      // 毛玻璃模糊遮罩
                       if (appState.privacyMode)
                         Positioned.fill(
-                          child: Container(
-                            color: Colors.black.withOpacity(0.95),
+                          child: ClipRect(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                              child: Container(
+                                color: Colors.black.withOpacity(0.3),
+                              ),
+                            ),
                           ),
                         ),
                     ],

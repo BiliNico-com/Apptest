@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
@@ -444,11 +445,16 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                                 child: Image.network(video.cover!, width: 120, height: 80, fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Icon(Icons.video_file, size: 32, color: Colors.white54)),
                               ),
-                              // 模糊遮罩
+                              // 毛玻璃模糊遮罩
                               if (appState.privacyMode)
                                 Positioned.fill(
-                                  child: Container(
-                                    color: Colors.black.withOpacity(0.95),
+                                  child: ClipRect(
+                                    child: BackdropFilter(
+                                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                                      child: Container(
+                                        color: Colors.black.withOpacity(0.3),
+                                      ),
+                                    ),
                                   ),
                                 ),
                             ],
@@ -531,6 +537,18 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 video.cover != null
                     ? Image.network(video.cover!, fit: BoxFit.cover)
                     : Icon(Icons.video_file, size: 50, color: Colors.grey),
+                // 毛玻璃模糊遮罩
+                if (appState.privacyMode)
+                  Positioned.fill(
+                    child: ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                        child: Container(
+                          color: Colors.black.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   bottom: 0,
                   left: 0,
