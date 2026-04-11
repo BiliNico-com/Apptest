@@ -439,9 +439,11 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
           ),
         ],
       ),
-    ),
-    );
-  }
+    ],
+  ),
+),
+  );
+}
   
   /// 搜索区域（可收缩）
   Widget _buildSearchArea() {
