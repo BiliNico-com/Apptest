@@ -236,22 +236,32 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                         : _buildVideoResults(),
                 
                 // 回顶部按钮
-                if (_showBackToTop)
-                  Positioned(
-                    bottom: 80,
-                    right: 16,
-                    child: FloatingActionButton(
-                      mini: true,
-                      onPressed: _scrollToTop,
-                      child: Icon(Icons.arrow_upward),
-                    ),
-                  ),
+                Consumer<AppState>(
+                  builder: (context, appState, _) {
+                    if (!_showBackToTop || !appState.showBackToTop) {
+                      return SizedBox.shrink();
+                    }
+                    return Positioned(
+                      bottom: 80,
+                      left: appState.backToTopPosition == 'left' ? 16 : null,
+                      right: appState.backToTopPosition == 'right' ? 16 : null,
+                      child: FloatingActionButton(
+                        mini: true,
+                        onPressed: _scrollToTop,
+                        child: Icon(Icons.arrow_upward),
+                      ),
+                    );
+                  },
+                ),
                 // 悬浮页码显示（在回顶部上方）
                 if (_showPageIndicator && _currentPage > 0 && !_isAuthorMode)
-                  Positioned(
-                    bottom: 140,
-                    right: 16,
-                    child: Container(
+                  Consumer<AppState>(
+                    builder: (context, appState, _) {
+                      return Positioned(
+                        bottom: 140,
+                        left: appState.backToTopPosition == 'left' ? 16 : null,
+                        right: appState.backToTopPosition == 'right' ? 16 : null,
+                        child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: Colors.black87,
@@ -262,6 +272,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                         style: TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ),
+                      );
+                    },
                   ),
               ],
             ),
@@ -277,7 +289,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                   if (_selectedIds.isNotEmpty)
                     TextButton(
                       onPressed: _toggleAll,
-                      child: Text(_selectedIds.length == _results.length ? '取消全选' : '全选'),
+                      child: Text('全选'),
                     ),
                   Spacer(),
                   FilledButton(
