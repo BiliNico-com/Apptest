@@ -220,16 +220,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
           ),
           // 右侧按钮保持不透明（只有隐藏搜索/设置区域时才显示）
           actions: [
-          // 搜索区域隐藏时显示搜索按钮
-          if (!_showSettings)
-            IconButton(
-              icon: Icon(Icons.search),
-              onPressed: () {
-                setState(() => _showSettings = true);
-                _scrollToTop();
-              },
-              tooltip: '搜索',
-            ),
           // 已选数量（居中显示）
           if (_selectedIds.isNotEmpty)
             Container(
@@ -390,6 +380,30 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                               child: Text(
                                 '第 $_authorCurrentPage 页',
                                 style: TextStyle(color: Colors.white, fontSize: 12),
+                              ),
+                            ),
+                          // 搜索按钮（搜索区域隐藏时显示）
+                          if (!_showSettings)
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _showSettings = true);
+                                _scrollToTop();
+                              },
+                              child: Container(
+                                margin: EdgeInsets.only(bottom: 8),
+                                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.search, color: Colors.white, size: 16),
+                                    SizedBox(width: 4),
+                                    Text('搜索', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                  ],
+                                ),
                               ),
                             ),
                           // 回顶部按钮

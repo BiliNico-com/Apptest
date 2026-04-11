@@ -205,16 +205,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             ),
             // 右侧按钮保持不透明（只有隐藏设置区域时才显示）
             actions: [
-              // 设置区域隐藏时显示设置按钮
-              if (!_showSettings)
-                IconButton(
-                  icon: Icon(Icons.settings),
-                  onPressed: () {
-                    setState(() => _showSettings = true);
-                    _scrollToTop();
-                  },
-                  tooltip: '设置',
-                ),
               // 已选数量（居中显示）
               if (_selectedIds.isNotEmpty)
                 Container(
@@ -332,6 +322,30 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                           child: Text(
                             '第 $_currentPage 页',
                             style: TextStyle(color: Colors.white, fontSize: 12),
+                          ),
+                        ),
+                      // 设置按钮（设置区域隐藏时显示）
+                      if (!_showSettings)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() => _showSettings = true);
+                            _scrollToTop();
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(bottom: 8),
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.settings, color: Colors.white, size: 16),
+                                SizedBox(width: 4),
+                                Text('设置', style: TextStyle(color: Colors.white, fontSize: 12)),
+                              ],
+                            ),
                           ),
                         ),
                       // 回顶部按钮
