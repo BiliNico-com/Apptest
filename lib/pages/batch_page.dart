@@ -29,9 +29,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   // 滚动控制
   final ScrollController _scrollController = ScrollController();
   bool _showBackToTop = false;
-  bool _showSettings = true;  // 是否显示设置区域
-  double _lastScrollOffset = 0;  // 上次滚动位置
-  double _appBarOpacity = 0.5;  // AppBar透明度（初始较透明）
   final TextEditingController _pageController = TextEditingController();
   
   @override
@@ -58,27 +55,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     if (showBtn != _showBackToTop) {
       setState(() => _showBackToTop = showBtn);
     }
-    
-    // 计算AppBar透明度（滚动80像素后几乎完全透明）
-    final opacity = (0.5 - _scrollController.offset / 80).clamp(0.0, 0.5);
-    if (opacity != _appBarOpacity) {
-      setState(() => _appBarOpacity = opacity);
-    }
-    
-    // 滚动时隐藏/显示设置区域
-    final currentOffset = _scrollController.offset;
-    if (currentOffset > _lastScrollOffset && currentOffset > 100) {
-      // 向下滚动，隐藏设置区域
-      if (_showSettings) {
-        setState(() => _showSettings = false);
-      }
-    } else if (currentOffset < _lastScrollOffset || currentOffset < 100) {
-      // 向上滚动或接近顶部，显示设置区域
-      if (!_showSettings) {
-        setState(() => _showSettings = true);
-      }
-    }
-    _lastScrollOffset = currentOffset;
     
     // 自动加载更多（仅在滚动到接近底部时触发）
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
@@ -197,199 +173,212 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return Scaffold(
-          extendBodyBehindAppBar: true,  // 让内容延伸到AppBar下方
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,  // 透明背景
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            flexibleSpace: ClipRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                child: Container(
-                  color: Colors.black.withOpacity(_appBarOpacity * 0.5),
-                ),
-              ),
-            ),
-            // 左侧文字跟随透明度隐藏
-            title: Opacity(
-              opacity: _appBarOpacity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('批量爬取'),
-                  Text('已加载 ${_videos.length} 个视频', 
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
-                ],
-              ),
-            ),
-            // 右侧按钮保持不透明（只有隐藏设置区域时才显示）
-            actions: [
-              // 已选数量（居中显示）
-              if (_selectedIds.isNotEmpty)
-                Container(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '已选 ${_selectedIds.length} 个',
-                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                  ),
-                ),
-              // 全选勾选框（添加背景避免被毛玻璃覆盖）
-              if (_selectedIds.isNotEmpty)
-                GestureDetector(
-                  onTap: () {
-                    final isAllSelected = _selectedIds.length == _videos.length;
-                    setState(() {
-                      if (isAllSelected) {
-                        _selectedIds.clear();
-                      } else {
-                        _selectedIds = _videos.map((v) => v.id).toSet();
-                      }
-                    });
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: _selectedIds.length == _videos.length 
-                          ? Colors.blue 
-                          : Theme.of(context).scaffoldBackgroundColor.withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(8),
-                      border: _selectedIds.length == _videos.length 
-                          ? null 
-                          : Border.all(color: Colors.blue, width: 2),
-                    ),
-                    child: Icon(
-                      Icons.check,
-                      color: _selectedIds.length == _videos.length 
-                          ? Colors.white 
-                          : Colors.blue,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              // 就绪按钮
-              Container(
-                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: _status == '就绪' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _status,
-                  style: TextStyle(
-                    color: _status == '就绪' ? Colors.green : Colors.orange,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              SizedBox(width: 4),
-              // 隐私按钮
-              IconButton(
-                icon: Icon(
-                  appState.privacyMode ? Icons.visibility_off : Icons.visibility,
-                  color: appState.privacyMode ? Colors.red : Colors.grey,
-                ),
-                onPressed: () {
-                  appState.togglePrivacyMode();
-                },
-                tooltip: appState.privacyMode ? '取消模糊' : '模糊预览图',
-              ),
-            ],
-          ),
-          body: Stack(
-            children: [
-              Column(
-                children: [
-                  // 顶部空间（设置区域的高度，避免内容跳动）
-                  AnimatedContainer(
-                    duration: Duration(milliseconds: 300),
-                    height: _showSettings 
-                        ? (kToolbarHeight + MediaQuery.of(context).padding.top + 60) 
-                        : 8,
-                  ),
-                  Expanded(child: _buildVideoGrid()),
-                ],
-              ),
-              // 设置区域（平滑移动到左侧）
-              AnimatedPositioned(
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeOutCubic,
-                top: kToolbarHeight + MediaQuery.of(context).padding.top + 8,
-                left: _showSettings ? 0 : -250,
-                right: _showSettings ? 0 : null,
-                child: _buildSettings(),
-              ),
-              // 页码跳转悬浮胶囊
-              _buildBottomPageNavigation(),
-              // 悬浮按钮组（设置按钮在上，回顶部按钮在下）- 移除页码显示
-              if (_showBackToTop && appState.showBackToTop)
-                Positioned(
-                  // 右下角且选中视频时，需要避开下载按钮
-                  bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 160.0 : 80.0,
-                  left: appState.backToTopPosition == 'left' ? 16 : null,
-                  right: appState.backToTopPosition == 'right' ? 16 : null,
-                  child: Column(
+          body: NestedScrollView(
+            controller: _scrollController,
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                // AppBar
+                SliverAppBar(
+                  pinned: true,
+                  floating: true,
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: appState.backToTopPosition == 'left' 
-                        ? CrossAxisAlignment.start 
-                        : CrossAxisAlignment.end,
                     children: [
-                      // 设置按钮（设置区域隐藏时显示）
-                      if (!_showSettings)
-                        GestureDetector(
-                          onTap: () {
-                            setState(() => _showSettings = true);
-                            _scrollToTop();
-                          },
-                          child: Container(
-                            margin: EdgeInsets.only(bottom: 8),
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.settings, color: Colors.white, size: 16),
-                                SizedBox(width: 4),
-                                Text('设置', style: TextStyle(color: Colors.white, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ),
-                      // 回顶部按钮
-                      FloatingActionButton(
-                        mini: true,
-                        heroTag: 'batch_back_to_top',
-                        onPressed: _scrollToTop,
-                        child: Icon(Icons.arrow_upward),
-                      ),
+                      Text('批量爬取'),
+                      Text('已加载 ${_videos.length} 个视频', 
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
+                  actions: _buildAppBarActions(appState),
                 ),
-              // 下载按钮（右下角，仅选中后显示）
-              if (_selectedIds.isNotEmpty)
-                Positioned(
-                  bottom: 80,
-                  right: 16,
-                  child: FloatingActionButton.extended(
-                    onPressed: _startDownload,
-                    icon: Icon(Icons.download),
-                    label: Text('下载 (${_selectedIds.length})'),
+                // 列表选择栏（吸顶）
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickySettingsDelegate(
+                    child: _buildSettingsBar(appState),
                   ),
                 ),
-            ],
+              ];
+            },
+            body: Stack(
+              children: [
+                _buildVideoGrid(),
+                // 页码跳转悬浮胶囊
+                _buildBottomPageNavigation(),
+                // 回顶部按钮
+                if (_showBackToTop && appState.showBackToTop)
+                  Positioned(
+                    bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 160.0 : 80.0,
+                    left: appState.backToTopPosition == 'left' ? 16 : null,
+                    right: appState.backToTopPosition == 'right' ? 16 : null,
+                    child: FloatingActionButton(
+                      mini: true,
+                      heroTag: 'batch_back_to_top',
+                      onPressed: _scrollToTop,
+                      child: Icon(Icons.arrow_upward),
+                    ),
+                  ),
+                // 下载按钮
+                if (_selectedIds.isNotEmpty)
+                  Positioned(
+                    bottom: 80,
+                    right: 16,
+                    child: FloatingActionButton.extended(
+                      onPressed: _startDownload,
+                      icon: Icon(Icons.download),
+                      label: Text('下载 (${_selectedIds.length})'),
+                    ),
+                  ),
+              ],
+            ),
           ),
         );
       },
+    );
+  }
+  
+  List<Widget> _buildAppBarActions(AppState appState) {
+    return [
+      // 已选数量
+      if (_selectedIds.isNotEmpty)
+        Container(
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            '已选 ${_selectedIds.length} 个',
+            style: TextStyle(color: Colors.blue, fontSize: 12),
+          ),
+        ),
+      // 全选勾选框
+      if (_selectedIds.isNotEmpty)
+        GestureDetector(
+          onTap: () {
+            final isAllSelected = _selectedIds.length == _videos.length;
+            setState(() {
+              if (isAllSelected) {
+                _selectedIds.clear();
+              } else {
+                _selectedIds = _videos.map((v) => v.id).toSet();
+              }
+            });
+          },
+          child: Container(
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            padding: EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: _selectedIds.length == _videos.length 
+                  ? Colors.blue 
+                  : Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: BorderRadius.circular(8),
+              border: _selectedIds.length == _videos.length 
+                  ? null 
+                  : Border.all(color: Colors.blue, width: 2),
+            ),
+            child: Icon(
+              Icons.check,
+              color: _selectedIds.length == _videos.length 
+                  ? Colors.white 
+                  : Colors.blue,
+              size: 20,
+            ),
+          ),
+        ),
+      // 就绪按钮
+      Container(
+        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: _status == '就绪' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          _status,
+          style: TextStyle(
+            color: _status == '就绪' ? Colors.green : Colors.orange,
+            fontSize: 12,
+          ),
+        ),
+      ),
+      SizedBox(width: 4),
+      // 隐私按钮
+      IconButton(
+        icon: Icon(
+          appState.privacyMode ? Icons.visibility_off : Icons.visibility,
+          color: appState.privacyMode ? Colors.red : Colors.grey,
+        ),
+        onPressed: () {
+          appState.togglePrivacyMode();
+        },
+        tooltip: appState.privacyMode ? '取消模糊' : '模糊预览图',
+      ),
+    ];
+  }
+  
+  /// 列表选择栏（吸顶内容）
+  Widget _buildSettingsBar(AppState appState) {
+    final siteType = appState.crawler?.siteType ?? "original";
+    final typeNames = _getTypeNames(siteType);
+    
+    // 站点切换后，检查当前选择的类型是否有效
+    if (!typeNames.containsKey(_selectedType)) {
+      _selectedType = 'list';
+    }
+    
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Center(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.list_alt, size: 18, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('列表: ', style: TextStyle(fontSize: 14)),
+              DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedType,
+                  isDense: true,
+                  icon: Icon(Icons.keyboard_arrow_down, size: 18),
+                  items: typeNames.entries.map((e) {
+                    return DropdownMenuItem(value: e.key, child: Text(e.value, style: TextStyle(fontSize: 14)));
+                  }).toList(),
+                  onChanged: (v) async {
+                    if (v != null && v != _selectedType) {
+                      setState(() {
+                        _selectedType = v;
+                        _videos.clear();
+                        _selectedIds.clear();
+                        _loadedPage = 0;
+                        _hasMore = true;
+                      });
+                      await _loadMore();
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -398,68 +387,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     return siteType == "porn91" ? _typeNamesPorn91 : _typeNamesOriginal;
   }
   
-  Widget _buildSettings() {
-    return Consumer<AppState>(
-      builder: (context, appState, _) {
-        final siteType = appState.crawler?.siteType ?? "original";
-        final typeNames = _getTypeNames(siteType);
-        
-        // 站点切换后，检查当前选择的类型是否有效，无效则重置为默认
-        if (!typeNames.containsKey(_selectedType)) {
-          _selectedType = 'list';
-        }
-        
-        // 居中悬浮胶囊
-        return Center(
-          child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.list_alt, size: 18, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('列表: ', style: TextStyle(fontSize: 14)),
-                DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedType,
-                    isDense: true,
-                    icon: Icon(Icons.keyboard_arrow_down, size: 18),
-                    items: typeNames.entries.map((e) {
-                      return DropdownMenuItem(value: e.key, child: Text(e.value, style: TextStyle(fontSize: 14)));
-                    }).toList(),
-                    onChanged: (v) async {
-                      if (v != null && v != _selectedType) {
-                        setState(() {
-                          _selectedType = v;
-                          _videos.clear();      // 清空旧数据
-                          _selectedIds.clear(); // 清空选中
-                          _loadedPage = 0;      // 重置页码
-                          _hasMore = true;      // 重置还有更多
-                        });
-                        await _loadMore();      // 重新加载新类型
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   /// 底部页码跳转区域（悬浮胶囊）
   Widget _buildBottomPageNavigation() {
     return Positioned(
@@ -984,4 +911,25 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       _selectedIds.clear();
     });
   }
+}
+
+/// 吸顶列表选择栏的 Header Delegate
+class _StickySettingsDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _StickySettingsDelegate({required this.child});
+
+  @override
+  double get minExtent => 56.0;
+
+  @override
+  double get maxExtent => 56.0;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(_StickySettingsDelegate oldDelegate) => child != oldDelegate.child;
 }
