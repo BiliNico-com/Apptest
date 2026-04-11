@@ -1075,7 +1075,7 @@ class _VideoResultsWidget extends StatelessWidget {
                         ],
                       ),
                     ),
-                  ),
+                  );
                 },
               ),
             ),
