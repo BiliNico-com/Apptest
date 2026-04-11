@@ -694,7 +694,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     // 时长标签（右下角，在标题上方，在毛玻璃之上）
                     if (video.duration != null)
                       Positioned(
-                        bottom: 80,
+                        bottom: 35,
                         right: 8,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
