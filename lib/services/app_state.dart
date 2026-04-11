@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../crawler/crawler_core.dart';
 import '../models/video_info.dart';
@@ -38,18 +39,49 @@ class AppState extends ChangeNotifier {
     await logger.i('AppState', '初始化完成, 权限: $permissionGranted, 下载目录: $downloadDir');
   }
   
-  // 请求存储权限
+  // 请求存储权限 - 适配 Android 13+ 的细粒度媒体权限
   Future<bool> requestPermissions() async {
     if (Platform.isAndroid) {
-      // Android 13+ 不需要 WRITE_EXTERNAL_STORAGE
-      final status = await Permission.storage.request();
-      permissionGranted = status.isGranted;
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+      final sdkInt = androidInfo.version.sdkInt;
       
-      // 如果是 Android 11+，还需要管理外部存储权限
-      if (!permissionGranted) {
-        final manageStatus = await Permission.manageExternalStorage.request();
-        permissionGranted = manageStatus.isGranted;
+      await logger.i('AppState', 'Android SDK: $sdkInt');
+      
+      PermissionStatus status;
+      
+      if (sdkInt >= 34) {
+        // Android 14+: 请求视频和图片权限
+        await logger.i('AppState', 'Android 14+: 请求细粒度媒体权限');
+        final videoStatus = await Permission.videos.request();
+        final imageStatus = await Permission.photos.request();
+        permissionGranted = videoStatus.isGranted || imageStatus.isGranted;
+        
+        // 如果细粒度权限被拒绝，尝试全盘访问
+        if (!permissionGranted) {
+          await logger.i('AppState', '细粒度权限被拒绝，尝试MANAGE_EXTERNAL_STORAGE');
+          final manageStatus = await Permission.manageExternalStorage.request();
+          permissionGranted = manageStatus.isGranted;
+        }
+      } else if (sdkInt >= 33) {
+        // Android 13: 使用 READ_MEDIA_* 权限
+        await logger.i('AppState', 'Android 13: 请求READ_MEDIA权限');
+        final videoStatus = await Permission.videos.request();
+        final audioStatus = await Permission.audio.request();
+        permissionGranted = videoStatus.isGranted;
+        
+        if (!permissionGranted) {
+          final manageStatus = await Permission.manageExternalStorage.request();
+          permissionGranted = manageStatus.isGranted;
+        }
+      } else {
+        // Android 12及以下: 使用传统存储权限
+        await logger.i('AppState', 'Android 12-: 请求传统存储权限');
+        status = await Permission.storage.request();
+        permissionGranted = status.isGranted;
       }
+      
+      await logger.i('AppState', '权限请求结果: $permissionGranted');
     } else {
       permissionGranted = true;
     }

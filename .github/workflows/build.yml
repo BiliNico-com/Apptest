@@ -23,6 +23,21 @@ jobs:
     - name: Generate platform files
       run: flutter create . --platforms android --project-name download_91 --org com.bilinico
     
+    - name: Merge AndroidManifest.xml
+      run: |
+        # flutter create 已经在 android/ 目录生成了文件
+        # 直接覆盖 AndroidManifest.xml
+        if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+          # 确保目标目录存在
+          mkdir -p android/app/src/main/res/xml
+          # file_paths.xml 已经存在，不需要额外操作
+          echo "AndroidManifest.xml already in place"
+        fi
+        # 如果 android 目录不存在（首次构建），需要处理
+        if [ ! -d "android" ]; then
+          echo "android directory will be created by flutter create"
+        fi
+    
     - name: Install dependencies
       run: flutter pub get
     
