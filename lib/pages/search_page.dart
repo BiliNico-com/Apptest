@@ -11,15 +11,19 @@ class SearchPage extends StatefulWidget {
   State<SearchPage> createState() => _SearchPageState();
 }
 
-class _SearchPageState extends State<SearchPage> {
+class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMixin {
   final _keywordController = TextEditingController();
   List<VideoInfo> _results = [];
   Set<String> _selectedIds = {};
   bool _isLoading = false;
   bool _isAuthorMode = false;
+  
+  @override
+  bool get wantKeepAlive => true;  // 保持页面状态
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // 必须调用
     return Scaffold(
       appBar: AppBar(
         title: Column(

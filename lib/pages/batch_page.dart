@@ -12,7 +12,7 @@ class BatchPage extends StatefulWidget {
   State<BatchPage> createState() => _BatchPageState();
 }
 
-class _BatchPageState extends State<BatchPage> {
+class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixin {
   String _selectedType = 'list';
   int _pageStart = 1;
   int _pageEnd = 3;
@@ -22,6 +22,9 @@ class _BatchPageState extends State<BatchPage> {
   String _status = '就绪';
   double _progress = 0.0;
   String _progressText = '';
+  
+  @override
+  bool get wantKeepAlive => true;  // 保持页面状态
   
   // porn91 站点的列表类型
   static const _typeNamesPorn91 = {
@@ -42,6 +45,7 @@ class _BatchPageState extends State<BatchPage> {
   
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // 必须调用，用于 AutomaticKeepAliveClientMixin
     return Consumer<AppState>(
       builder: (context, appState, _) {
         // 记录批量页面状态

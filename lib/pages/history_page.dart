@@ -10,9 +10,12 @@ class HistoryPage extends StatefulWidget {
   State<HistoryPage> createState() => _HistoryPageState();
 }
 
-class _HistoryPageState extends State<HistoryPage> {
+class _HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClientMixin {
   List<Map<String, dynamic>> _history = [];
   bool _isLoading = true;
+  
+  @override
+  bool get wantKeepAlive => true;  // 保持页面状态
 
   @override
   void initState() {
@@ -22,6 +25,7 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);  // 必须调用
     return Scaffold(
       appBar: AppBar(
         title: Column(
