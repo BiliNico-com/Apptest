@@ -179,11 +179,24 @@ class CrawlerCore {
       final videoHref = viewkeyMatch.group(1)!.replaceAll('&amp;', '&');
       final viewkey = viewkeyMatch.group(2)!;
       
-      // 提取封面（优先从 playvthumb_XXXXXX）
+      // 提取封面（优先从 playvthumb_XXXXXX，后备从 img src）
       String? cover;
       final playvthumbMatch = CrawlerConfig.playvthumbPattern.firstMatch(wellContent);
       if (playvthumbMatch != null) {
         cover = VideoInfo.buildCoverUrl(playvthumbMatch.group(1)!);
+      } else {
+        // 后备方案：从 img 标签提取封面
+        final imgMatch = RegExp(r'<img[^>]*src="([^"]+)"[^>]*>').firstMatch(wellContent);
+        if (imgMatch != null) {
+          var imgSrc = imgMatch.group(1)!;
+          if (imgSrc.startsWith('http')) {
+            cover = imgSrc;
+          } else if (imgSrc.startsWith('//')) {
+            cover = 'https:$imgSrc';
+          } else if (imgSrc.isNotEmpty) {
+            cover = '$baseUrl$imgSrc';
+          }
+        }
       }
       
       // 提取标题
