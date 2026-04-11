@@ -972,6 +972,13 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
   bool _hasError = false;
   String _errorMessage = '';
   
+  // 手势控制进度相关
+  bool _isDragging = false;
+  double _dragStartX = 0;
+  Duration _dragStartPosition = Duration.zero;
+  Duration _seekPosition = Duration.zero;
+  bool _showSeekIndicator = false;
+  
   @override
   void initState() {
     super.initState();
@@ -1103,8 +1110,90 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> {
       );
     }
     
-    return Center(
-      child: Chewie(controller: _chewieController!),
+    return GestureDetector(
+      onHorizontalDragStart: (details) {
+        if (!_videoPlayerController.value.isInitialized) return;
+        setState(() {
+          _isDragging = true;
+          _dragStartX = details.globalPosition.dx;
+          _dragStartPosition = _videoPlayerController.value.position;
+          _seekPosition = _dragStartPosition;
+          _showSeekIndicator = true;
+        });
+        // 暂停播放以便拖动
+        if (_videoPlayerController.value.isPlaying) {
+          _videoPlayerController.pause();
+        }
+      },
+      onHorizontalDragUpdate: (details) {
+        if (!_isDragging) return;
+        
+        final screenWidth = MediaQuery.of(context).size.width;
+        final dx = details.globalPosition.dx - _dragStartX;
+        
+        // 每滑动屏幕宽度的 1/2，快进/快退 10 秒
+        final totalDuration = _videoPlayerController.value.duration;
+        final seekRatio = dx / (screenWidth / 2);
+        final seekSeconds = (seekRatio * 10).round();
+        
+        final newPosition = _dragStartPosition + Duration(seconds: seekSeconds);
+        // 限制在有效范围内
+        _seekPosition = Duration(
+          milliseconds: newPosition.inMilliseconds.clamp(0, totalDuration.inMilliseconds),
+        );
+        
+        setState(() {});
+      },
+      onHorizontalDragEnd: (details) {
+        if (!_isDragging) return;
+        
+        // 跳转到目标位置
+        _videoPlayerController.seekTo(_seekPosition);
+        
+        setState(() {
+          _isDragging = false;
+          _showSeekIndicator = false;
+        });
+        
+        // 恢复播放
+        _videoPlayerController.play();
+      },
+      child: Stack(
+        children: [
+          Center(
+            child: Chewie(controller: _chewieController!),
+          ),
+          // 进度指示器
+          if (_showSeekIndicator)
+            Center(
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_formatDuration(_seekPosition)} / ${_formatDuration(_videoPlayerController.value.duration)}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+  
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes}:${seconds.toString().padLeft(2, '0')}';
   }
 }
