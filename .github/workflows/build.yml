@@ -21,7 +21,7 @@ jobs:
         channel: 'stable'
     
     - name: Generate platform files
-      run: flutter create . --platforms android --project-name download_91
+      run: flutter create . --platforms android --project-name download_91 --org com.bilinico
     
     - name: Install dependencies
       run: flutter pub get
