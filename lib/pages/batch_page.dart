@@ -487,12 +487,41 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                               // 毛玻璃模糊遮罩
                               if (appState.privacyMode)
                                 Positioned.fill(
-                                  child: ClipRect(
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                                      child: Container(
-                                        color: Colors.black.withOpacity(0.3),
-                                      ),
+                                  child: BackdropFilter(
+                                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                                    child: Container(
+                                      color: Colors.black.withOpacity(0.3),
+                                    ),
+                                  ),
+                                ),
+                              // 选中标记（左上角，参考搜索页面）
+                              if (isSelected)
+                                Positioned(
+                                  top: 4,
+                                  left: 4,
+                                  child: Container(
+                                    padding: EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(Icons.check, color: Colors.white, size: 12),
+                                  ),
+                                ),
+                              // 时长标签（右下角）
+                              if (video.duration != null)
+                                Positioned(
+                                  bottom: 4,
+                                  right: 4,
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black87,
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      video.duration!,
+                                      style: TextStyle(color: Colors.white, fontSize: 9),
                                     ),
                                   ),
                                 ),
@@ -502,7 +531,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     ),
                   ),
                   SizedBox(width: 12),
-                  // 信息 - 按图3标准：第一行视频名称+作者，第二行时长
+                  // 信息 - 视频名称+作者
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,21 +558,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                             ],
                           ],
                         ),
-                        // 第二行：时长
-                        if (video.duration != null) ...[
-                          SizedBox(height: 4),
-                          Text(
-                            video.duration!,
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
                       ],
                     ),
                   ),
-                  // 选中图标
-                  isSelected 
-                    ? Icon(Icons.check_circle, color: Colors.blue)
-                    : Icon(Icons.circle_outlined, color: Colors.grey),
                 ],
               ),
             ),
@@ -634,10 +651,10 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       child: Icon(Icons.check, color: Colors.white, size: 16),
                     ),
                   ),
-                // 时长标签（右下角，在毛玻璃之上）
+                // 时长标签（右下角，在标题上方，在毛玻璃之上）
                 if (video.duration != null)
                   Positioned(
-                    bottom: 8,
+                    bottom: 55,
                     right: 8,
                     child: Container(
                       padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),

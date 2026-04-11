@@ -677,10 +677,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                           child: Icon(Icons.check, color: Colors.white, size: 16),
                         ),
                       ),
-                    // 时长标签（右下角，在毛玻璃之上）
+                    // 时长标签（右下角，在标题上方，在毛玻璃之上）
                     if (video.duration != null)
                       Positioned(
-                        bottom: 8,
+                        bottom: 55,
                         right: 8,
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
