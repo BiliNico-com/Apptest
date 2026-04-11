@@ -108,6 +108,26 @@ class Logger {
       print('Clear logs failed: $e');
     }
   }
+  
+  // 保存日志到指定目录
+  Future<String?> saveToDirectory(String targetDir) async {
+    if (_logFile == null || !await _logFile!.exists()) {
+      return null;
+    }
+    
+    try {
+      final content = await _logFile!.readAsString();
+      final now = DateTime.now();
+      final fileName = '91Download_log_${DateFormat('yyyyMMdd_HHmmss').format(now)}.txt';
+      final targetFile = File('$targetDir/$fileName');
+      
+      await targetFile.writeAsString(content);
+      return targetFile.path;
+    } catch (e) {
+      print('Save log to directory failed: $e');
+      return null;
+    }
+  }
 }
 
 // 全局日志实例

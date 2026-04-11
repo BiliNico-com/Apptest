@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import '../models/video_info.dart';
+import '../utils/logger.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -174,9 +175,12 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _search() async {
     if (_keywordController.text.isEmpty) return;
     
+    await logger.i('Search', 'UI操作: 点击搜索按钮, 关键词: ${_keywordController.text}, 作者模式: $_isAuthorMode');
+    
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     if (crawler == null) {
+      await logger.w('Search', '爬虫为空, 请先选择站点');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('请先在设置页选择站点')),
       );
@@ -188,7 +192,9 @@ class _SearchPageState extends State<SearchPage> {
       _results.clear();
     });
     
+    await logger.d('Search', '开始搜索...');
     final results = await crawler.searchVideos(_keywordController.text);
+    await logger.i('Search', '搜索完成, 结果数: ${results.length}');
     
     setState(() {
       _results = results;
@@ -197,7 +203,8 @@ class _SearchPageState extends State<SearchPage> {
     });
   }
 
-  void _download() {
+  void _download() async {
+    await logger.i('Search', 'UI操作: 点击下载按钮, 选中 ${_selectedIds.length} 个视频');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('开始下载 ${_selectedIds.length} 个视频')),
     );

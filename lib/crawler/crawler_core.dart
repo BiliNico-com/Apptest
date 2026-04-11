@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'config.dart';
 import '../models/video_info.dart';
+import '../utils/logger.dart';
 
 class CrawlerCore {
   final Dio _dio;
@@ -110,15 +111,17 @@ class CrawlerCore {
   Future<List<VideoInfo>> getVideoList(String listType, int page) async {
     final urlPattern = CrawlerConfig.listTypesV2[listType];
     if (urlPattern == null) {
+      await logger.e('Crawler', '未知的列表类型: $listType');
       throw Exception('未知的列表类型: $listType');
     }
     
     final url = '$baseUrl/${urlPattern.replaceAll('{page}', page.toString())}';
-    print('[Crawler] 获取视频列表: $url');
+    await logger.i('Crawler', '网络请求: GET/POST $url');
     
     try {
       // 关键：先 GET 获取初始 cookie，再 POST 提交语言设置
       final getResp = await _dio.get(url);
+      await logger.d('Crawler', 'GET响应状态: ${getResp.statusCode}');
       
       // POST 提交语言设置
       final postResp = await _dio.post(
@@ -128,12 +131,15 @@ class CrawlerCore {
           contentType: Headers.formUrlEncodedContentType,
         ),
       );
+      await logger.d('Crawler', 'POST响应状态: ${postResp.statusCode}');
       
       final html = postResp.data.toString();
-      return _parseVideoList(html);
+      final videos = _parseVideoList(html);
+      await logger.i('Crawler', '解析完成, 返回 ${videos.length} 个视频');
+      return videos;
       
     } catch (e) {
-      print('[Crawler] 获取视频列表失败: $e');
+      await logger.e('Crawler', '获取视频列表失败: $e');
       return [];
     }
   }
@@ -218,13 +224,17 @@ class CrawlerCore {
   /// 搜索视频
   Future<List<VideoInfo>> searchVideos(String keyword, {int page = 1}) async {
     final url = '$baseUrl/search_result.php?search_id=${Uri.encodeComponent(keyword)}&page=$page';
+    await logger.i('Crawler', '网络请求: 搜索视频 $url');
     
     try {
       final resp = await _dio.get(url);
+      await logger.d('Crawler', '搜索响应状态: ${resp.statusCode}');
       final html = resp.data.toString();
-      return _parseVideoList(html);
+      final videos = _parseVideoList(html);
+      await logger.i('Crawler', '搜索完成, 返回 ${videos.length} 个结果');
+      return videos;
     } catch (e) {
-      print('[Crawler] 搜索失败: $e');
+      await logger.e('Crawler', '搜索失败: $e');
       return [];
     }
   }
@@ -232,14 +242,16 @@ class CrawlerCore {
   /// 搜索作者
   Future<List<AuthorInfo>> searchAuthors(String keyword) async {
     final url = '$baseUrl/search_result.php?search_id=${Uri.encodeComponent(keyword)}&search_type=author';
+    await logger.i('Crawler', '网络请求: 搜索作者 $url');
     
     try {
       final resp = await _dio.get(url);
+      await logger.d('Crawler', '搜索作者响应状态: ${resp.statusCode}');
       final html = resp.data.toString();
       // TODO: 实现作者解析
       return [];
     } catch (e) {
-      print('[Crawler] 搜索作者失败: $e');
+      await logger.e('Crawler', '搜索作者失败: $e');
       return [];
     }
   }

@@ -104,7 +104,7 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged: (site) async {
                 if (site != null) {
                   appState.changeSite(site);
-                  await logger.i('Settings', '切换站点: $site');
+                  await logger.i('Settings', 'UI操作: 切换站点 -> $site');
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('已切换到 $site')),
                   );
@@ -185,7 +185,10 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: Text(appState.permissionGranted ? '已授权' : '未授权'),
               trailing: !appState.permissionGranted
                 ? TextButton(
-                    onPressed: () => appState.requestPermissions(),
+                    onPressed: () async {
+                      await logger.i('Settings', 'UI操作: 点击授权按钮');
+                      await appState.requestPermissions();
+                    },
                     child: Text('授权'),
                   )
                 : null,
@@ -218,8 +221,8 @@ class _SettingsPageState extends State<SettingsPage> {
               subtitle: Text('开启后将记录运行日志'),
               value: appState.debugMode,
               onChanged: (v) async {
+                await logger.i('Settings', 'UI操作: 切换Debug模式 -> $v');
                 await appState.toggleDebug(v);
-                await logger.i('Settings', 'Debug模式: $v');
               },
             ),
             if (appState.debugMode) ...[
@@ -238,19 +241,33 @@ class _SettingsPageState extends State<SettingsPage> {
                     child: OutlinedButton.icon(
                       onPressed: _exportLog,
                       icon: Icon(Icons.share, size: 18),
-                      label: Text('导出日志'),
+                      label: Text('分享日志'),
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _clearLog,
-                icon: Icon(Icons.delete, size: 18, color: Colors.red),
-                label: Text('清空日志', style: TextStyle(color: Colors.red)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _saveLog(appState.downloadDir),
+                      icon: Icon(Icons.save, size: 18),
+                      label: Text('保存日志'),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _clearLog,
+                      icon: Icon(Icons.delete, size: 18, color: Colors.red),
+                      label: Text('清空日志', style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               if (_logContent.isNotEmpty) ...[
                 SizedBox(height: 12),
@@ -294,7 +311,7 @@ class _SettingsPageState extends State<SettingsPage> {
             SizedBox(height: 12),
             Text('91Download 移动端', style: TextStyle(fontSize: 14)),
             SizedBox(height: 4),
-            Text('版本: v1.0.1', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('版本: v1.0.2', style: TextStyle(fontSize: 12, color: Colors.grey)),
             SizedBox(height: 8),
             Text('视频下载工具移动端版本', style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
@@ -304,6 +321,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
   
   Future<void> _loadLog() async {
+    await logger.i('Settings', 'UI操作: 点击查看日志');
     final content = await logger.getLogContent();
     setState(() {
       _logContent = content;
@@ -311,6 +329,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
   
   Future<void> _exportLog() async {
+    await logger.i('Settings', 'UI操作: 点击分享日志');
     final content = await logger.getLogContent();
     if (content.isEmpty || content == '暂无日志') {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -319,11 +338,33 @@ class _SettingsPageState extends State<SettingsPage> {
       return;
     }
     
-    // 使用分享功能导出日志
     await Share.share(content, subject: '91Download Debug Log');
   }
   
+  Future<void> _saveLog(String downloadDir) async {
+    await logger.i('Settings', 'UI操作: 点击保存日志');
+    if (downloadDir.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('下载目录未初始化')),
+      );
+      return;
+    }
+    
+    final savedPath = await logger.saveToDirectory(downloadDir);
+    if (savedPath != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('日志已保存到: $savedPath')),
+      );
+      await logger.i('Settings', '日志已保存: $savedPath');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存日志失败')),
+      );
+    }
+  }
+  
   Future<void> _clearLog() async {
+    await logger.i('Settings', 'UI操作: 点击清空日志');
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

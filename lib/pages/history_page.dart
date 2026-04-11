@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
+import '../utils/logger.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -16,7 +17,6 @@ class _HistoryPageState extends State<HistoryPage> {
   @override
   void initState() {
     super.initState();
-    // 延迟加载，避免在initState中使用context
     Future.microtask(() => _loadHistory());
   }
 
@@ -64,10 +64,13 @@ class _HistoryPageState extends State<HistoryPage> {
   }
 
   Future<void> _loadHistory() async {
+    await logger.i('History', 'UI操作: 加载下载历史');
+    
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     
     if (crawler == null) {
+      await logger.w('History', '爬虫为空, 无法加载历史');
       setState(() {
         _history = [];
         _isLoading = false;
@@ -76,6 +79,7 @@ class _HistoryPageState extends State<HistoryPage> {
     }
     
     final history = await crawler.getDownloadHistory();
+    await logger.i('History', '加载历史记录: ${history.length} 条');
     
     setState(() {
       _history = history;
@@ -83,12 +87,15 @@ class _HistoryPageState extends State<HistoryPage> {
     });
   }
 
-  void _openVideo(String? path) {
+  void _openVideo(String? path) async {
     if (path == null) return;
+    await logger.i('History', 'UI操作: 点击打开视频: $path');
     // TODO: 打开视频播放器
   }
 
   Future<void> _clearHistory() async {
+    await logger.i('History', 'UI操作: 点击清空历史');
+    
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -102,6 +109,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
     
     if (confirm == true) {
+      await logger.i('History', '确认清空历史记录');
       // TODO: 清空数据库
       _loadHistory();
     }
