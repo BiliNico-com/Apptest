@@ -307,14 +307,24 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             children: [
               Column(
                 children: [
-                  // 设置区域（可收缩）
+                  // 顶部空间（设置区域的高度，避免内容跳动）
                   AnimatedContainer(
-                    duration: Duration(milliseconds: 200),
-                    height: _showSettings ? null : 0,
-                    child: _showSettings ? _buildSettings() : SizedBox.shrink(),
+                    duration: Duration(milliseconds: 300),
+                    height: _showSettings 
+                        ? (kToolbarHeight + MediaQuery.of(context).padding.top + 60) 
+                        : 8,
                   ),
                   Expanded(child: _buildVideoGrid()),
                 ],
+              ),
+              // 设置区域（平滑移动到左侧）
+              AnimatedPositioned(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                top: kToolbarHeight + MediaQuery.of(context).padding.top + 8,
+                left: _showSettings ? 0 : -250,
+                right: _showSettings ? 0 : null,
+                child: _buildSettings(),
               ),
               // 页码跳转悬浮胶囊
               _buildBottomPageNavigation(),
@@ -403,9 +413,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   }
   
   Widget _buildSettings() {
-    // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
-    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
-    
     return Consumer<AppState>(
       builder: (context, appState, _) {
         final siteType = appState.crawler?.siteType ?? "original";
@@ -416,59 +423,52 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           _selectedType = 'list';
         }
         
-        return Column(
-          children: [
-            // 顶部空间（避免被AppBar遮挡）
-            SizedBox(height: topPadding + 8),
-            // 居中悬浮胶囊
-            Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+        // 居中悬浮胶囊
+        return Center(
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.list_alt, size: 18, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Text('列表: ', style: TextStyle(fontSize: 14)),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _selectedType,
-                        isDense: true,
-                        icon: Icon(Icons.keyboard_arrow_down, size: 18),
-                        items: typeNames.entries.map((e) {
-                          return DropdownMenuItem(value: e.key, child: Text(e.value, style: TextStyle(fontSize: 14)));
-                        }).toList(),
-                        onChanged: (v) async {
-                          if (v != null && v != _selectedType) {
-                            setState(() {
-                              _selectedType = v;
-                              _videos.clear();      // 清空旧数据
-                              _selectedIds.clear(); // 清空选中
-                              _loadedPage = 0;      // 重置页码
-                              _hasMore = true;      // 重置还有更多
-                            });
-                            await _loadMore();      // 重新加载新类型
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              ],
             ),
-            SizedBox(height: 8),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.list_alt, size: 18, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('列表: ', style: TextStyle(fontSize: 14)),
+                DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedType,
+                    isDense: true,
+                    icon: Icon(Icons.keyboard_arrow_down, size: 18),
+                    items: typeNames.entries.map((e) {
+                      return DropdownMenuItem(value: e.key, child: Text(e.value, style: TextStyle(fontSize: 14)));
+                    }).toList(),
+                    onChanged: (v) async {
+                      if (v != null && v != _selectedType) {
+                        setState(() {
+                          _selectedType = v;
+                          _videos.clear();      // 清空旧数据
+                          _selectedIds.clear(); // 清空选中
+                          _loadedPage = 0;      // 重置页码
+                          _hasMore = true;      // 重置还有更多
+                        });
+                        await _loadMore();      // 重新加载新类型
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
