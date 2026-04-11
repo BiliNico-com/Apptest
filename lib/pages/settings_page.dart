@@ -295,98 +295,80 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
           children: [
             Row(
               children: [
-                Icon(Icons.play_circle, size: 20, color: Colors.red),
+                Icon(Icons.view_module, size: 20, color: Colors.blue),
                 SizedBox(width: 8),
-                Text('播放器设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('浏览设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ],
             ),
             SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('使用外部播放器'),
-              subtitle: Text(
-                appState.useExternalPlayer 
-                  ? '使用第三方播放器播放视频' 
-                  : '使用内置播放器播放视频',
-              ),
-              value: appState.useExternalPlayer,
-              onChanged: (v) {
-                appState.setExternalPlayer(v);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(v ? '已切换到外部播放器' : '已切换到内置播放器'),
-                  ),
-                );
-              },
-            ),
-            Divider(),
             // 视频显示模式切换
             Row(
               children: [
-                Icon(Icons.view_module, size: 20, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('视频显示模式', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.grid_view, size: 16),
-                        SizedBox(width: 4),
-                        Text('大图'),
-                      ],
-                    ),
-                    selected: appState.videoDisplayMode == 'grid',
-                    onSelected: (selected) {
-                      if (selected) {
-                        appState.setVideoDisplayMode('grid');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('已切换到大图模式')),
-                        );
-                      }
-                    },
+                Text('视频显示模式', style: TextStyle(fontSize: 14)),
+                Spacer(),
+                ChoiceChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.grid_view, size: 16),
+                      SizedBox(width: 4),
+                      Text('大图'),
+                    ],
                   ),
+                  selected: appState.videoDisplayMode == 'grid',
+                  onSelected: (selected) {
+                    if (selected) {
+                      appState.setVideoDisplayMode('grid');
+                    }
+                  },
                 ),
                 SizedBox(width: 8),
-                Expanded(
-                  child: ChoiceChip(
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.list, size: 16),
-                        SizedBox(width: 4),
-                        Text('列表'),
-                      ],
-                    ),
-                    selected: appState.videoDisplayMode == 'list',
-                    onSelected: (selected) {
-                      if (selected) {
-                        appState.setVideoDisplayMode('list');
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('已切换到列表模式')),
-                        );
-                      }
-                    },
+                ChoiceChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.list, size: 16),
+                      SizedBox(width: 4),
+                      Text('列表'),
+                    ],
                   ),
+                  selected: appState.videoDisplayMode == 'list',
+                  onSelected: (selected) {
+                    if (selected) {
+                      appState.setVideoDisplayMode('list');
+                    }
+                  },
                 ),
               ],
             ),
             Divider(),
-            ListTile(
+            // 回顶部按钮设置
+            SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.info_outline, color: Colors.grey),
-              title: Text('播放器说明', style: TextStyle(fontSize: 14)),
-              subtitle: Text(
-                '内置播放器：直接在本应用内播放，支持倍速、进度条控制\n'
-                '外部播放器：调用系统或其他播放器应用播放',
-                style: TextStyle(fontSize: 12),
-              ),
+              title: Text('显示回顶部按钮'),
+              subtitle: Text('滚动时显示快速回顶部按钮'),
+              value: appState.showBackToTop,
+              onChanged: (v) {
+                appState.showBackToTop = v;
+                appState.notifyListeners();
+              },
             ),
+            if (appState.showBackToTop)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('按钮位置'),
+                trailing: SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(value: 'left', label: Text('左下')),
+                    ButtonSegment(value: 'right', label: Text('右下')),
+                  ],
+                  selected: {appState.backToTopPosition},
+                  onSelectionChanged: (s) {
+                    appState.backToTopPosition = s.first;
+                    appState.notifyListeners();
+                  },
+                ),
+              ),
           ],
         ),
       ),
@@ -448,64 +430,6 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
               ],
             ),
             SizedBox(height: 12),
-            // 回顶部按钮设置
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('显示回顶部按钮'),
-              subtitle: Text('滚动时显示快速回顶部按钮'),
-              value: appState.showBackToTop,
-              onChanged: (v) {
-                appState.showBackToTop = v;
-                appState.notifyListeners();
-              },
-            ),
-            if (appState.showBackToTop)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('按钮位置'),
-                trailing: SegmentedButton<String>(
-                  segments: [
-                    ButtonSegment(value: 'left', label: Text('左下')),
-                    ButtonSegment(value: 'right', label: Text('右下')),
-                  ],
-                  selected: {appState.backToTopPosition},
-                  onSelectionChanged: (s) {
-                    appState.backToTopPosition = s.first;
-                    appState.notifyListeners();
-                  },
-                ),
-              ),
-            Divider(),
-            // 视频显示模式
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('视频显示模式'),
-              subtitle: Text('选择列表或大图模式'),
-              trailing: SegmentedButton<String>(
-                segments: [
-                  ButtonSegment(value: 'list', label: Text('列表')),
-                  ButtonSegment(value: 'grid', label: Text('大图')),
-                ],
-                selected: {appState.videoDisplayMode},
-                onSelectionChanged: (s) {
-                  appState.videoDisplayMode = s.first;
-                  appState.notifyListeners();
-                },
-              ),
-            ),
-            Divider(),
-            // 外部播放器设置
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('使用外部播放器'),
-              subtitle: Text('用系统播放器打开视频'),
-              value: appState.useExternalPlayer,
-              onChanged: (v) {
-                appState.useExternalPlayer = v;
-                appState.notifyListeners();
-              },
-            ),
-            Divider(),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: Text('Debug模式'),
