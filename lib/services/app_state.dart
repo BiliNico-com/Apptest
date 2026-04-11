@@ -187,6 +187,7 @@ class AppState extends ChangeNotifier {
   // 切换Debug模式
   Future<void> toggleDebug(bool enable) async {
     debugMode = enable;
+    await logger.toggle(enable);
     notifyListeners();
   }
 
