@@ -91,20 +91,51 @@ class AppState extends ChangeNotifier {
   
   // 初始化下载目录
   Future<void> initDownloadDir() async {
+    await logger.i('AppState', '开始初始化下载目录');
+    
     if (downloadDir.isEmpty) {
       if (Platform.isAndroid) {
-        // Android: 使用外部存储的 Download 目录
-        final dir = Directory('/storage/emulated/0/Download/91Download');
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
+        try {
+          // 优先使用外部存储的 Download 目录
+          final dir = Directory('/storage/emulated/0/Download/91Download');
+          await logger.d('AppState', '尝试创建目录: ${dir.path}');
+          
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+            await logger.i('AppState', '目录创建成功: ${dir.path}');
+          }
+          downloadDir = dir.path;
+        } catch (e) {
+          // 如果失败，使用应用私有目录
+          await logger.w('AppState', '外部存储目录创建失败: $e');
+          try {
+            final appDir = await getExternalStorageDirectory();
+            if (appDir != null) {
+              final dir = Directory('${appDir.path}/91Download');
+              if (!await dir.exists()) {
+                await dir.create(recursive: true);
+              }
+              downloadDir = dir.path;
+              await logger.i('AppState', '使用应用目录: $downloadDir');
+            } else {
+              // 最后使用内部存储
+              final internalDir = await getApplicationDocumentsDirectory();
+              downloadDir = '${internalDir.path}/91Download';
+              await logger.i('AppState', '使用内部存储: $downloadDir');
+            }
+          } catch (e2) {
+            await logger.e('AppState', '创建下载目录失败: $e2');
+            downloadDir = '';
+          }
         }
-        downloadDir = dir.path;
       } else {
         // iOS: 使用应用文档目录
         final appDir = await getApplicationDocumentsDirectory();
         downloadDir = '${appDir.path}/91Download';
       }
     }
+    
+    await logger.i('AppState', '下载目录初始化完成: $downloadDir');
     notifyListeners();
   }
   

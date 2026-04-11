@@ -3,6 +3,7 @@ import 'batch_page.dart';
 import 'search_page.dart';
 import 'history_page.dart';
 import 'settings_page.dart';
+import 'utils/logger.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -15,6 +16,7 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
   late PageController _pageController;
   
+  final _pageNames = ['批量爬取', '搜索', '已下载', '设置'];
   final _pages = const [
     BatchPage(),
     SearchPage(),
@@ -34,8 +36,9 @@ class _MainPageState extends State<MainPage> {
     super.dispose();
   }
   
-  // 跳转到指定页面（供子页面调用）
+  // 跳转到指定页面
   void goToPage(int index) {
+    logger.i('MainPage', 'UI操作: 切换页面 -> ${_pageNames[index]}');
     _pageController.animateToPage(
       index,
       duration: Duration(milliseconds: 300),
@@ -49,6 +52,7 @@ class _MainPageState extends State<MainPage> {
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) {
+          logger.i('MainPage', 'UI操作: 滑动切换页面 -> ${_pageNames[index]}');
           setState(() {
             _currentIndex = index;
           });

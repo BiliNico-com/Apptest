@@ -22,6 +22,13 @@ class _BatchPageState extends State<BatchPage> {
   double _progress = 0.0;
   String _progressText = '';
   
+  final _typeNames = {
+    'list': '视频',
+    'hot': '当前最热',
+    'topm': '本月最热',
+    'ori': '91原创',
+  };
+  
   @override
   Widget build(BuildContext context) {
     return Consumer<AppState>(
@@ -105,13 +112,15 @@ class _BatchPageState extends State<BatchPage> {
                 Expanded(
                   child: DropdownButtonFormField(
                     value: _selectedType,
-                    items: [
-                    DropdownMenuItem(value: 'list', child: Text('视频')),
-                    DropdownMenuItem(value: 'hot', child: Text('当前最热')),
-                    DropdownMenuItem(value: 'topm', child: Text('本月最热')),
-                    DropdownMenuItem(value: 'ori', child: Text('91原创')),
-                  ],
-                    onChanged: (v) => setState(() => _selectedType = v!),
+                    items: _typeNames.entries.map((e) {
+                      return DropdownMenuItem(value: e.key, child: Text(e.value));
+                    }).toList(),
+                    onChanged: (v) async {
+                      if (v != null) {
+                        await logger.i('Batch', 'UI操作: 选择列表类型 -> ${_typeNames[v]}');
+                        setState(() => _selectedType = v);
+                      }
+                    },
                   ),
                 ),
               ],
@@ -120,9 +129,19 @@ class _BatchPageState extends State<BatchPage> {
             Row(
               children: [
                 Text('页码: '),
-                SizedBox(width: 50, child: TextFormField(initialValue: '1', onChanged: (v) => _pageStart = int.tryParse(v) ?? 1)),
+                SizedBox(width: 50, child: TextFormField(
+                  initialValue: '1',
+                  onChanged: (v) {
+                    _pageStart = int.tryParse(v) ?? 1;
+                  },
+                )),
                 Text(' ~ '),
-                SizedBox(width: 50, child: TextFormField(initialValue: '3', onChanged: (v) => _pageEnd = int.tryParse(v) ?? 3)),
+                SizedBox(width: 50, child: TextFormField(
+                  initialValue: '3',
+                  onChanged: (v) {
+                    _pageEnd = int.tryParse(v) ?? 3;
+                  },
+                )),
                 Spacer(),
                 FilledButton(
                   onPressed: _isLoading ? null : _loadVideos,
@@ -183,7 +202,9 @@ class _BatchPageState extends State<BatchPage> {
         final isSelected = _selectedIds.contains(video.id);
         
         return GestureDetector(
-          onTap: () {
+          onTap: () async {
+            final action = isSelected ? '取消选择' : '选择';
+            await logger.d('Batch', 'UI操作: $action视频 [${video.title}]');
             setState(() {
               if (isSelected) {
                 _selectedIds.remove(video.id);
@@ -235,9 +256,11 @@ class _BatchPageState extends State<BatchPage> {
       child: Row(
         children: [
           TextButton(
-            onPressed: _videos.isEmpty ? null : () {
+            onPressed: _videos.isEmpty ? null : () async {
+              final isAllSelected = _selectedIds.length == _videos.length;
+              await logger.i('Batch', 'UI操作: ${isAllSelected ? "取消全选" : "全选"}');
               setState(() {
-                if (_selectedIds.length == _videos.length) {
+                if (isAllSelected) {
                   _selectedIds.clear();
                 } else {
                   _selectedIds = _videos.map((v) => v.id).toSet();
@@ -257,7 +280,7 @@ class _BatchPageState extends State<BatchPage> {
   }
 
   Future<void> _loadVideos() async {
-    await logger.i('Batch', '开始加载视频: $_selectedType, 页码: $_pageStart-$_pageEnd');
+    await logger.i('Batch', 'UI操作: 点击加载按钮, 类型=$_selectedType, 页码=$_pageStart-$_pageEnd');
     
     setState(() {
       _isLoading = true;
@@ -279,7 +302,7 @@ class _BatchPageState extends State<BatchPage> {
     
     final videos = <VideoInfo>[];
     for (var p = _pageStart; p <= _pageEnd; p++) {
-      await logger.d('Batch', '加载第 $p 页');
+      await logger.i('Batch', '网络请求: 加载第 $p 页');
       final list = await crawler.getVideoList(_selectedType, p);
       videos.addAll(list);
     }
@@ -294,8 +317,8 @@ class _BatchPageState extends State<BatchPage> {
     });
   }
 
-  void _startDownload() {
-    // TODO: 实现下载逻辑
+  Future<void> _startDownload() async {
+    await logger.i('Batch', 'UI操作: 点击下载按钮, 选中 ${_selectedIds.length} 个视频');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('开始下载 ${_selectedIds.length} 个视频')),
     );
