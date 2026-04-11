@@ -826,7 +826,6 @@ class CrawlerCore {
         mp4Url,
         savePath,
         onReceiveProgress: (received, total) {
-          downloaded = received;
           if (total > 0) {
             final progress = received / total;
             final downloadedMB = (received / 1024 / 1024).toStringAsFixed(1);

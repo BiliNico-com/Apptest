@@ -476,6 +476,7 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
           ],
         ),
       ),
+    ),
     );
   }
   

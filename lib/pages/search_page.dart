@@ -516,40 +516,42 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   
   /// 大图模式显示视频结果
   Widget _buildVideoGridResults() {
-    return GridView.builder(
-      padding: EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.75,
-      ),
-      itemCount: _results.length,
-      itemBuilder: (context, index) {
-        final video = _results[index];
-        final selected = _selectedIds.contains(video.id);
-        
-        return GestureDetector(
-          onTap: () => _toggleSelection(video.id),
-          child: Card(
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                video.cover != null
-                    ? Image.network(video.cover!, fit: BoxFit.cover)
-                    : Icon(Icons.video_file, size: 50, color: Colors.grey),
-                // 毛玻璃模糊遮罩
-                if (appState.privacyMode)
-                  Positioned.fill(
-                    child: ClipRect(
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                        child: Container(
-                          color: Colors.black.withOpacity(0.3),
+    return Consumer<AppState>(
+      builder: (context, appState, _) {
+        return GridView.builder(
+          padding: EdgeInsets.all(8),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.75,
+          ),
+          itemCount: _results.length,
+          itemBuilder: (context, index) {
+            final video = _results[index];
+            final selected = _selectedIds.contains(video.id);
+            
+            return GestureDetector(
+              onTap: () => _toggleSelection(video.id),
+              child: Card(
+                clipBehavior: Clip.antiAlias,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    video.cover != null
+                        ? Image.network(video.cover!, fit: BoxFit.cover)
+                        : Icon(Icons.video_file, size: 50, color: Colors.grey),
+                    // 毛玻璃模糊遮罩
+                    if (appState.privacyMode)
+                      Positioned.fill(
+                        child: ClipRect(
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                            child: Container(
+                              color: Colors.black.withOpacity(0.3),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                Positioned(
+                    Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
@@ -620,6 +622,8 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         );
       },
     );
+  },
+);
   }
   
   /// 构建作者搜索结果
