@@ -240,71 +240,126 @@ class CrawlerCore {
     
     print('[Crawler] 解析 original HTML, 长度: ${html.length}');
     
-    // 策略1: 列表页格式（带封面图的 <a> 标签）
-    // <a href="video-xxx.htm"><div style="background-image:url('xxx')" title="标题"></div></a>
-    // 注意：Dart 中 ["'] 是字符类，匹配单引号或双引号
-    final pattern1 = RegExp(
-      r'''<a[^>]*href="(video-(\d+)\.htm)"[^>]*>\s*<div[^>]*style="[^"]*background-image:\s*url\(['"]([^'"]+)['"]\)[^"]*"\s*title=\s*"([^"]*)"''',
+    // 策略1: 完整容器解析 - 匹配 thumbnail 容器
+    // <div class="thumbnail">
+    //   <a href="video-xxx.htm"><div style="background-image:url('...')" title="标题"></div></a>
+    //   <var class="duration">时长</var>
+    //   <a href="user.htm?author=xxx">作者</a>
+    // </div>
+    final containerPattern = RegExp(
+      r'<div[^>]*class="[^"]*thumbnail[^"]*"[^>]*>(.*?)</div>\s*</div>',
       caseSensitive: false,
+      dotAll: true,
     );
     
-    for (final match in pattern1.allMatches(html)) {
-      final videoHref = match.group(1)!;
-      final videoId = match.group(2)!;
-      var cover = match.group(3)!;
-      final title = match.group(4)!.trim();
+    for (final containerMatch in containerPattern.allMatches(html)) {
+      final container = containerMatch.group(1)!;
       
-      // 封面相对路径转绝对路径
-      if (!cover.startsWith('http')) {
-        cover = '$baseUrl/$cover';
-      }
+      // 提取视频链接和ID
+      final videoLinkMatch = RegExp(r'href="(video-(\d+)\.htm)"').firstMatch(container);
+      if (videoLinkMatch == null) continue;
+      
+      final videoHref = videoLinkMatch.group(1)!;
+      final videoId = videoLinkMatch.group(2)!;
       
       if (seenIds.contains(videoId)) continue;
       seenIds.add(videoId);
+      
+      // 提取封面
+      String? cover;
+      final coverMatch = RegExp(r'''background-image:\s*url\(['"]([^'"]+)['"]\)''').firstMatch(container);
+      if (coverMatch != null) {
+        cover = coverMatch.group(1)!;
+        if (!cover.startsWith('http')) {
+          cover = '$baseUrl/$cover';
+        }
+      }
+      
+      // 提取标题
+      String? title;
+      final titleMatch = RegExp(r'title="([^"]+)"').firstMatch(container);
+      if (titleMatch != null) {
+        title = titleMatch.group(1)!.trim();
+      }
+      if (title == null) {
+        // 备用：从 h5 或标题区域提取
+        final h5Match = RegExp(r'<h5[^>]*>.*?<a[^>]*>([^<]+)</a>').firstMatch(container);
+        if (h5Match != null) {
+          title = h5Match.group(1)!.trim();
+        }
+      }
+      if (title == null) continue;
+      
+      // 提取时长 <var class="duration">时长</var>
+      String? duration;
+      final durationMatch = RegExp(r'<var[^>]*class="[^"]*duration[^"]*"[^>]*>([^<]+)</var>').firstMatch(container);
+      if (durationMatch != null) {
+        duration = durationMatch.group(1)!.trim();
+      }
+      
+      // 提取作者 <a href="user.htm?author=xxx">&nbsp;作者</a>
+      String? author;
+      final authorMatch = RegExp(r'<a[^>]*href="user\.htm\?author=([^"]+)"[^>]*>(?:&nbsp;)?([^<]+)</a>').firstMatch(container);
+      if (authorMatch != null) {
+        author = authorMatch.group(2)!.trim();
+      }
       
       videos.add(VideoInfo(
         id: videoId,
         url: '$baseUrl/$videoHref',
         title: title,
         cover: cover,
+        author: author,
+        duration: duration,
       ));
     }
     
-    print('[Crawler] 策略1找到 ${videos.length} 个视频');
+    print('[Crawler] 策略1(thumbnail容器)找到 ${videos.length} 个视频');
     
-    // 策略2: 搜索结果格式（<h4><a href="video-xxx.htm">标题</a></h4>）
+    // 策略2: 简单链接格式（兜底）
     if (videos.isEmpty) {
       final pattern2 = RegExp(
-        r'<h4>\s*<a[^>]*href="(video-(\d+)\.htm)"[^>]*>([^<]+)</a>',
+        r'''<a[^>]*href="(video-(\d+)\.htm)"[^>]*>\s*<div[^>]*style="[^"]*background-image:\s*url\(['"]([^'"]+)['"]\)[^"]*"\s*title=\s*"([^"]*)"''',
         caseSensitive: false,
       );
       
       for (final match in pattern2.allMatches(html)) {
         final videoHref = match.group(1)!;
         final videoId = match.group(2)!;
-        final title = match.group(3)!.trim();
+        var cover = match.group(3)!;
+        final title = match.group(4)!.trim();
         
-        // 尝试从上下文中提取封面
-        String? cover;
-        final pos = match.start;
-        final blockStart = pos > 500 ? pos - 500 : 0;
-        final block = html.substring(blockStart, pos);
-        final coverMatch = RegExp(r'''background-image:\s*url\(['"]([^'"]+)['"]\)''').firstMatch(block);
-        if (coverMatch != null) {
-          cover = coverMatch.group(1)!;
-          if (!cover.startsWith('http')) {
-            cover = '$baseUrl/$cover';
-          }
+        if (!cover.startsWith('http')) {
+          cover = '$baseUrl/$cover';
         }
         
         if (seenIds.contains(videoId)) continue;
         seenIds.add(videoId);
+        
+        // 尝试从上下文提取时长和作者
+        String? duration;
+        String? author;
+        final pos = match.end;
+        final blockEnd = pos + 500 < html.length ? pos + 500 : html.length;
+        final block = html.substring(pos, blockEnd);
+        
+        final durationMatch = RegExp(r'<var[^>]*class="[^"]*duration[^"]*"[^>]*>([^<]+)</var>').firstMatch(block);
+        if (durationMatch != null) {
+          duration = durationMatch.group(1)!.trim();
+        }
+        
+        final authorMatch = RegExp(r'<a[^>]*href="user\.htm\?author=([^"]+)"[^>]*>(?:&nbsp;)?([^<]+)</a>').firstMatch(block);
+        if (authorMatch != null) {
+          author = authorMatch.group(2)!.trim();
+        }
         
         videos.add(VideoInfo(
           id: videoId,
           url: '$baseUrl/$videoHref',
           title: title,
           cover: cover,
+          author: author,
+          duration: duration,
         ));
       }
       
