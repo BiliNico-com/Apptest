@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../crawler/config.dart';
 import '../models/video_info.dart';
 import '../services/app_state.dart';
 import '../utils/logger.dart';
@@ -22,11 +23,21 @@ class _BatchPageState extends State<BatchPage> {
   double _progress = 0.0;
   String _progressText = '';
   
-  final _typeNames = {
+  // porn91 站点的列表类型
+  static const _typeNamesPorn91 = {
     'list': '视频',
     'hot': '当前最热',
     'topm': '本月最热',
     'ori': '91原创',
+  };
+  
+  // original 站点的列表类型
+  static const _typeNamesOriginal = {
+    'list': '视频',
+    'top7': '周榜',
+    'top': '月榜',
+    '5min': '5分钟+',
+    'long': '10分钟+',
   };
   
   @override
@@ -109,64 +120,76 @@ class _BatchPageState extends State<BatchPage> {
     );
   }
 
+  /// 根据站点类型获取列表选项
+  Map<String, String> _getTypeNames(String siteType) {
+    return siteType == "porn91" ? _typeNamesPorn91 : _typeNamesOriginal;
+  }
+  
   Widget _buildSettings() {
-    return Card(
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
+    return Consumer<AppState>(
+      builder: (context, appState, _) {
+        final siteType = appState.crawler?.siteType ?? "original";
+        final typeNames = _getTypeNames(siteType);
+        
+        return Card(
+          margin: EdgeInsets.all(16),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
               children: [
-                Text('列表: '),
-                Expanded(
-                  child: DropdownButtonFormField(
-                    value: _selectedType,
-                    items: _typeNames.entries.map((e) {
-                      return DropdownMenuItem(value: e.key, child: Text(e.value));
-                    }).toList(),
-                    onChanged: (v) async {
-                      if (v != null) {
-                        await logger.i('Batch', 'UI操作: 选择列表类型 -> ${_typeNames[v]}');
-                        setState(() => _selectedType = v);
-                      }
-                    },
-                  ),
+                Row(
+                  children: [
+                    Text('列表: '),
+                    Expanded(
+                      child: DropdownButtonFormField(
+                        value: _selectedType,
+                        items: typeNames.entries.map((e) {
+                          return DropdownMenuItem(value: e.key, child: Text(e.value));
+                        }).toList(),
+                        onChanged: (v) async {
+                          if (v != null) {
+                            await logger.i('Batch', 'UI操作: 选择列表类型 -> ${typeNames[v]}');
+                            setState(() => _selectedType = v);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text('页码: '),
+                    SizedBox(width: 50, child: TextFormField(
+                      initialValue: '1',
+                      onChanged: (v) {
+                        _pageStart = int.tryParse(v) ?? 1;
+                      },
+                    )),
+                    Text(' ~ '),
+                    SizedBox(width: 50, child: TextFormField(
+                      initialValue: '3',
+                      onChanged: (v) {
+                        _pageEnd = int.tryParse(v) ?? 3;
+                      },
+                    )),
+                    Spacer(),
+                    FilledButton(
+                      onPressed: _isLoading ? null : () async {
+                        print('[Batch] 加载按钮被点击');
+                        await _loadVideos();
+                      },
+                      child: _isLoading 
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Text('加载'),
+                    ),
+                  ],
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Text('页码: '),
-                SizedBox(width: 50, child: TextFormField(
-                  initialValue: '1',
-                  onChanged: (v) {
-                    _pageStart = int.tryParse(v) ?? 1;
-                  },
-                )),
-                Text(' ~ '),
-                SizedBox(width: 50, child: TextFormField(
-                  initialValue: '3',
-                  onChanged: (v) {
-                    _pageEnd = int.tryParse(v) ?? 3;
-                  },
-                )),
-                Spacer(),
-                FilledButton(
-                  onPressed: _isLoading ? null : () async {
-                    print('[Batch] 加载按钮被点击');
-                    await _loadVideos();
-                  },
-                  child: _isLoading 
-                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : Text('加载'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

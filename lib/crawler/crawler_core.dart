@@ -16,7 +16,7 @@ class CrawlerCore {
   final Dio _dio;
   String baseUrl;
   String? imgBaseUrl;
-  String _siteType = "porn91";
+  String _siteType = "original";  // 默认 original，会自动检测
   bool _stopFlag = false;
   bool _pauseFlag = false;
   
@@ -34,7 +34,13 @@ class CrawlerCore {
     Dio? dio,
   }) : _dio = dio ?? Dio() {
     _initDio();
-    // 数据库懒加载，不在此初始化
+    _detectSiteType();
+  }
+  
+  /// 检测站点类型
+  void _detectSiteType() {
+    _siteType = CrawlerConfig.detectSiteType(baseUrl);
+    print('[Crawler] 站点类型检测: domain=${Uri.parse(baseUrl).host}, type=$_siteType');
   }
 
   void _initDio() {
@@ -109,32 +115,32 @@ class CrawlerCore {
   /// [listType] 列表类型（list/ori/hot/top等）
   /// [page] 页码
   Future<List<VideoInfo>> getVideoList(String listType, int page) async {
-    final urlPattern = CrawlerConfig.listTypesV2[listType];
+    // 根据站点类型选择 URL 模板
+    final listTypes = CrawlerConfig.getListTypes(_siteType);
+    final urlPattern = listTypes[listType];
+    
     if (urlPattern == null) {
-      await logger.e('Crawler', '未知的列表类型: $listType');
+      await logger.e('Crawler', '未知的列表类型: $listType (siteType=$_siteType)');
       throw Exception('未知的列表类型: $listType');
     }
     
     final url = '$baseUrl/${urlPattern.replaceAll('{page}', page.toString())}';
-    await logger.i('Crawler', '网络请求: GET/POST $url');
+    await logger.i('Crawler', '网络请求: GET $url (siteType=$_siteType)');
     
     try {
-      // 关键：先 GET 获取初始 cookie，再 POST 提交语言设置
-      final getResp = await _dio.get(url);
-      await logger.d('Crawler', 'GET响应状态: ${getResp.statusCode}');
+      final resp = await _dio.get(url);
+      await logger.d('Crawler', '响应状态: ${resp.statusCode}, 长度: ${resp.data.toString().length}');
       
-      // POST 提交语言设置
-      final postResp = await _dio.post(
-        url,
-        data: {'session_language': 'cn_CN'},
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-        ),
-      );
-      await logger.d('Crawler', 'POST响应状态: ${postResp.statusCode}');
+      final html = resp.data.toString();
       
-      final html = postResp.data.toString();
-      final videos = _parseVideoList(html);
+      // 根据站点类型选择解析方法
+      List<VideoInfo> videos;
+      if (_siteType == "porn91") {
+        videos = _parseVideoListPorn91(html);
+      } else {
+        videos = _parseVideoListOriginal(html);
+      }
+      
       await logger.i('Crawler', '解析完成, 返回 ${videos.length} 个视频');
       return videos;
       
@@ -144,13 +150,12 @@ class CrawlerCore {
     }
   }
 
-  /// 解析视频列表 HTML
-  /// 严格按 Python 版本的正则和逻辑
-  List<VideoInfo> _parseVideoList(String html) {
+  /// 解析视频列表 HTML - porn91 CMS（91porn 风格）
+  List<VideoInfo> _parseVideoListPorn91(String html) {
     final videos = <VideoInfo>[];
     final seenIds = <String>{};
     
-    print('[Crawler] 开始解析 HTML, 长度: ${html.length}');
+    print('[Crawler] 解析 porn91 HTML, 长度: ${html.length}');
     
     // 策略1：只匹配 col-lg-3 容器内的视频卡片（过滤 col-lg-8 广告）
     final containerMatches = CrawlerConfig.containerPattern.allMatches(html).toList();
@@ -218,19 +223,108 @@ class CrawlerCore {
     print('[Crawler] 解析到 ${videos.length} 个视频');
     return videos;
   }
+  
+  /// 解析视频列表 HTML - original CMS（ml0987/hsex 风格）
+  List<VideoInfo> _parseVideoListOriginal(String html) {
+    final videos = <VideoInfo>[];
+    final seenIds = <String>{};
+    
+    print('[Crawler] 解析 original HTML, 长度: ${html.length}');
+    
+    // original CMS 使用 video-{id}.htm 格式的链接
+    // 匹配所有 video-数字.htm 链接
+    final videoLinkPattern = RegExp(r'<a[^>]*href="(video-(\d+)\.htm)"[^>]*>');
+    final titlePattern = RegExp(r'<span[^>]*class="video-title[^"]*"[^>]*>([^<]+)</span>', caseSensitive: false);
+    final coverPattern = RegExp(r'<img[^>]*src="(https?://[^"]+)"[^>]*(?:data-id|class="[^"]*thumb[^"]*")', caseSensitive: false);
+    
+    // 分割成视频块
+    final blockPattern = RegExp(r'<div[^>]*class="[^"]*video-item[^"]*"[^>]*>([\s\S]*?)</div>\s*</div>', caseSensitive: false);
+    final blocks = blockPattern.allMatches(html).toList();
+    
+    print('[Crawler] 找到 ${blocks.length} 个 video-item 块');
+    
+    for (final block in blocks) {
+      final content = block.group(1)!;
+      
+      // 提取视频链接和ID
+      final linkMatch = videoLinkPattern.firstMatch(content);
+      if (linkMatch == null) continue;
+      
+      final videoHref = linkMatch.group(1)!;
+      final videoId = linkMatch.group(2)!;
+      
+      // 提取标题
+      String title = 'Video $videoId';
+      final titleMatch = titlePattern.firstMatch(content);
+      if (titleMatch != null) {
+        title = titleMatch.group(1)!.trim();
+      }
+      
+      // 提取封面
+      String? cover;
+      final coverMatch = coverPattern.firstMatch(content);
+      if (coverMatch != null) {
+        cover = coverMatch.group(1);
+      }
+      
+      // 去重
+      if (seenIds.contains(videoId)) continue;
+      seenIds.add(videoId);
+      
+      videos.add(VideoInfo(
+        id: videoId,
+        url: '$baseUrl/$videoHref',
+        title: title,
+        cover: cover,
+      ));
+    }
+    
+    // 如果上面的解析没找到，尝试更宽松的匹配
+    if (videos.isEmpty) {
+      print('[Crawler] 尝试宽松匹配...');
+      
+      // 直接匹配所有 video-数字.htm 链接
+      final allLinks = videoLinkPattern.allMatches(html);
+      for (final link in allLinks) {
+        final videoHref = link.group(1)!;
+        final videoId = link.group(2)!;
+        
+        if (seenIds.contains(videoId)) continue;
+        seenIds.add(videoId);
+        
+        videos.add(VideoInfo(
+          id: videoId,
+          url: '$baseUrl/$videoHref',
+          title: 'Video $videoId',
+        ));
+      }
+    }
+    
+    print('[Crawler] 解析到 ${videos.length} 个视频');
+    return videos;
+  }
 
   // ==================== 搜索 ====================
 
   /// 搜索视频
-  Future<List<VideoInfo>> searchVideos(String keyword, {int page = 1}) async {
-    final url = '$baseUrl/search_result.php?search_id=${Uri.encodeComponent(keyword)}&page=$page';
-    await logger.i('Crawler', '网络请求: 搜索视频 $url');
+  Future<List<VideoInfo>> searchVideos(String keyword, {int page = 1, String sort = "new"}) async {
+    // 根据站点类型构建搜索URL
+    final url = CrawlerConfig.buildSearchUrl(baseUrl, _siteType, keyword, page: page, sort: sort);
+    await logger.i('Crawler', '网络请求: 搜索视频 $url (siteType=$_siteType)');
     
     try {
       final resp = await _dio.get(url);
       await logger.d('Crawler', '搜索响应状态: ${resp.statusCode}');
       final html = resp.data.toString();
-      final videos = _parseVideoList(html);
+      
+      // 根据站点类型选择解析方法
+      List<VideoInfo> videos;
+      if (_siteType == "porn91") {
+        videos = _parseVideoListPorn91(html);
+      } else {
+        videos = _parseVideoListOriginal(html);
+      }
+      
       await logger.i('Crawler', '搜索完成, 返回 ${videos.length} 个结果');
       return videos;
     } catch (e) {
@@ -511,5 +605,9 @@ class CrawlerCore {
   void changeSite(String newBaseUrl) {
     baseUrl = newBaseUrl;
     _initDio();
+    _detectSiteType();
   }
+  
+  /// 获取当前站点类型
+  String get siteType => _siteType;
 }
