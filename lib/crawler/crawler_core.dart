@@ -283,9 +283,9 @@ class CrawlerCore {
         }
       }
       
-      // 提取标题
+      // 提取标题（允许 title= "xxx" 或 title="xxx" 格式）
       String? title;
-      final titleMatch = RegExp(r'title="([^"]+)"').firstMatch(container);
+      final titleMatch = RegExp(r'title\s*=\s*"([^"]+)"').firstMatch(container);
       if (titleMatch != null) {
         title = titleMatch.group(1)!.trim();
       }
@@ -351,12 +351,12 @@ class CrawlerCore {
         if (seenIds.contains(videoId)) continue;
         seenIds.add(videoId);
         
-        // 提取标题
+        // 提取标题（允许 title= "xxx" 或 title="xxx" 格式）
         String? title;
         final pos = match.end;
         final blockEnd = pos + 500 < html.length ? pos + 500 : html.length;
         final block = html.substring(pos, blockEnd);
-        final titleMatch = RegExp(r'title="([^"]+)"').firstMatch(html.substring(match.start, match.end + 500));
+        final titleMatch = RegExp(r'title\s*=\s*"([^"]+)"').firstMatch(html.substring(match.start, match.end + 500));
         if (titleMatch != null) {
           title = titleMatch.group(1)!.trim();
         }

@@ -281,6 +281,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         final siteType = appState.crawler?.siteType ?? "original";
         final typeNames = _getTypeNames(siteType);
         
+        // 站点切换后，检查当前选择的类型是否有效，无效则重置为默认
+        if (!typeNames.containsKey(_selectedType)) {
+          _selectedType = 'list';
+        }
+        
         return Card(
           margin: EdgeInsets.all(16),
           child: Padding(
