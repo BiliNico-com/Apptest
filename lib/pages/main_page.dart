@@ -13,6 +13,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
+  late PageController _pageController;
   
   final _pages = const [
     BatchPage(),
@@ -22,15 +23,42 @@ class _MainPageState extends State<MainPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+  
+  // 跳转到指定页面（供子页面调用）
+  void goToPage(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) {
           setState(() {
             _currentIndex = index;
           });
+        },
+        children: _pages,
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) {
+          goToPage(index);
         },
         destinations: const [
           NavigationDestination(

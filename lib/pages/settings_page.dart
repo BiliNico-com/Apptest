@@ -12,6 +12,14 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      context.read<AppState>().init();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -19,30 +27,34 @@ class _SettingsPageState extends State<SettingsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('设置'),
-            Text('保存目录、代理、下载选项',
+            Text('站点、下载目录',
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
       ),
-      body: ListView(
-        children: [
-          // 站点选择
-          _buildSection('当前站点', Icons.language, _buildSiteSelector()),
-          
-          // 代理设置
-          _buildSection('代理设置', Icons.vpn_lock, _buildProxySettings()),
-          
-          // 下载设置
-          _buildSection('下载选项', Icons.download, _buildDownloadOptions()),
-          
-          // 关于
-          _buildSection('关于', Icons.info, _buildAbout()),
-        ],
+      body: Consumer<AppState>(
+        builder: (context, appState, _) {
+          return ListView(
+            children: [
+              // 站点选择 - 必须先选择
+              _buildSiteSection(appState),
+              
+              // 下载目录
+              _buildDownloadDirSection(appState),
+              
+              // 权限状态
+              _buildPermissionSection(appState),
+              
+              // 关于
+              _buildAboutSection(),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSection(String title, IconData icon, Widget content) {
+  Widget _buildSiteSection(AppState appState) {
     return Card(
       margin: EdgeInsets.all(16),
       child: Padding(
@@ -52,123 +64,156 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             Row(
               children: [
-                Icon(icon, size: 20),
+                Icon(Icons.language, size: 20, color: Colors.blue),
                 SizedBox(width: 8),
-                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('当前站点', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                if (!appState.isSiteSelected) ...[
+                  SizedBox(width: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text('请选择', style: TextStyle(color: Colors.orange, fontSize: 12)),
+                  ),
+                ],
               ],
             ),
             SizedBox(height: 16),
-            content,
+            DropdownButtonFormField<String>(
+              value: appState.currentSite,
+              hint: Text('请选择站点', style: TextStyle(color: Colors.grey)),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              items: CrawlerConfig.availableSites.map((site) {
+                return DropdownMenuItem(
+                  value: site,
+                  child: Text(site),
+                );
+              }).toList(),
+              onChanged: (site) {
+                if (site != null) {
+                  appState.changeSite(site);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('已切换到 $site')),
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSiteSelector() {
-    return Consumer<AppState>(
-      builder: (context, appState, _) {
-        return DropdownButtonFormField<String>(
-          value: appState.currentSite,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          items: CrawlerConfig.availableSites.map((site) {
-            return DropdownMenuItem(
-              value: site,
-              child: Text(site),
-            );
-          }).toList(),
-          onChanged: (site) {
-            if (site != null) {
-              appState.changeSite(site);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('已切换到 $site')),
-              );
-            }
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildProxySettings() {
-    return Consumer<AppState>(
-      builder: (context, appState, _) {
-        return Column(
+  Widget _buildDownloadDirSection(AppState appState) {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SwitchListTile(
-              title: Text('启用代理'),
-              value: appState.proxyEnabled,
-              onChanged: (v) => appState.setProxy(enabled: v),
+            Row(
+              children: [
+                Icon(Icons.folder, size: 20, color: Colors.amber),
+                SizedBox(width: 8),
+                Text('下载目录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
             ),
-            if (appState.proxyEnabled) ...[
-              SizedBox(height: 8),
-              Row(
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      initialValue: appState.proxyHost,
-                      decoration: InputDecoration(
-                        labelText: '主机',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (v) => appState.setProxy(enabled: true, host: v),
+                    child: Text(
+                      appState.downloadDir.isEmpty 
+                        ? '正在初始化...' 
+                        : appState.downloadDir,
+                      style: TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   SizedBox(width: 8),
-                  SizedBox(
-                    width: 80,
-                    child: TextFormField(
-                      initialValue: appState.proxyPort,
-                      decoration: InputDecoration(
-                        labelText: '端口',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (v) => appState.setProxy(enabled: true, port: v),
-                    ),
-                  ),
+                  Icon(Icons.copy, size: 16, color: Colors.grey),
                 ],
               ),
-            ],
+            ),
           ],
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildDownloadOptions() {
-    return Column(
-      children: [
-        SwitchListTile(
-          title: Text('标题包含上传者'),
-          value: true,
-          onChanged: (v) {},
+  Widget _buildPermissionSection(AppState appState) {
+    return Card(
+      margin: EdgeInsets.all(16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.security, size: 20, color: Colors.green),
+                SizedBox(width: 8),
+                Text('权限状态', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                appState.permissionGranted ? Icons.check_circle : Icons.error,
+                color: appState.permissionGranted ? Colors.green : Colors.red,
+              ),
+              title: Text('存储权限'),
+              subtitle: Text(appState.permissionGranted ? '已授权' : '未授权'),
+              trailing: !appState.permissionGranted
+                ? TextButton(
+                    onPressed: () => appState.requestPermissions(),
+                    child: Text('授权'),
+                  )
+                : null,
+            ),
+          ],
         ),
-        SwitchListTile(
-          title: Text('按日期分类'),
-          value: false,
-          onChanged: (v) {},
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildAbout() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('91Download Mobile'),
-        SizedBox(height: 8),
-        Text('版本: 1.0.0', style: TextStyle(color: Colors.grey)),
-        SizedBox(height: 16),
-        Text(
-          '本项目代码由 AI（Claude）辅助编写，仅供学习交流使用。',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+  Widget _buildAboutSection() {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info, size: 20, color: Colors.purple),
+                SizedBox(width: 8),
+                Text('关于', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            SizedBox(height: 12),
+            Text('91Download 移动端', style: TextStyle(fontSize: 14)),
+            SizedBox(height: 4),
+            Text('版本: v1.0.0', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            SizedBox(height: 8),
+            Text('视频下载工具移动端版本', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

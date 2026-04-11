@@ -23,6 +23,42 @@ class _BatchPageState extends State<BatchPage> {
   
   @override
   Widget build(BuildContext context) {
+    return Consumer<AppState>(
+      builder: (context, appState, _) {
+        // 检查是否已选择站点
+        if (!appState.isSiteSelected) {
+          return _buildNoSiteSelected();
+        }
+        
+        return _buildMainContent();
+      },
+    );
+  }
+  
+  Widget _buildNoSiteSelected() {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('批量爬取'),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.language, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('请先选择站点', style: TextStyle(fontSize: 18, color: Colors.grey)),
+            SizedBox(height: 8),
+            Text('在设置页面选择要使用的站点', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            SizedBox(height: 24),
+            Text('← 左滑到设置页面选择站点', 
+              style: TextStyle(fontSize: 14, color: Colors.blue)),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildMainContent() {
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -88,8 +124,10 @@ class _BatchPageState extends State<BatchPage> {
                 SizedBox(width: 50, child: TextFormField(initialValue: '3', onChanged: (v) => _pageEnd = int.tryParse(v) ?? 3)),
                 Spacer(),
                 FilledButton(
-                  onPressed: _loadVideos,
-                  child: Text('加载'),
+                  onPressed: _isLoading ? null : _loadVideos,
+                  child: _isLoading 
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Text('加载'),
                 ),
               ],
             ),
@@ -100,8 +138,8 @@ class _BatchPageState extends State<BatchPage> {
   }
 
   Widget _buildProgress() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
           LinearProgressIndicator(value: _progress),
@@ -113,65 +151,71 @@ class _BatchPageState extends State<BatchPage> {
   }
 
   Widget _buildVideoGrid() {
+    if (_isLoading && _videos.isEmpty) {
+      return Center(child: CircularProgressIndicator());
+    }
+    
     if (_videos.isEmpty) {
-      return Center(child: Text('等待爬取...', style: TextStyle(color: Colors.grey)));
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.video_library_outlined, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('点击加载获取视频列表', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
     }
     
     return GridView.builder(
+      padding: EdgeInsets.all(8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.8,
+        childAspectRatio: 0.75,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
       ),
       itemCount: _videos.length,
       itemBuilder: (context, index) {
         final video = _videos[index];
-        final selected = _selectedIds.contains(video.id);
+        final isSelected = _selectedIds.contains(video.id);
         
         return GestureDetector(
           onTap: () {
             setState(() {
-                if (selected) {
-                  _selectedIds.remove(video.id);
-                } else {
-                  _selectedIds.add(video.id);
-                }
-              });
+              if (isSelected) {
+                _selectedIds.remove(video.id);
+              } else {
+                _selectedIds.add(video.id);
+              }
+            });
           },
           child: Card(
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.expand,
+            color: isSelected ? Colors.blue.withOpacity(0.2) : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                video.cover != null
-                    ? Image.network(video.cover!, fit: BoxFit.cover)
-                    : Icon(Icons.video_file, size: 50, color: Colors.grey),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
+                Expanded(
                   child: Container(
-                    padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                      ),
+                      color: Colors.grey[800],
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                     ),
-                    child: Text(
-                      video.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: Colors.white),
+                    child: Center(
+                      child: Icon(Icons.play_circle, size: 48, color: Colors.white54),
                     ),
                   ),
                 ),
-                if (selected)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Icon(Icons.check_circle, color: Colors.blue),
+                Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Text(
+                    video.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12),
                   ),
+                ),
               ],
             ),
           ),
@@ -183,10 +227,14 @@ class _BatchPageState extends State<BatchPage> {
   Widget _buildBottomBar() {
     return Container(
       padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 8)],
+      ),
       child: Row(
         children: [
           TextButton(
-            onPressed: () {
+            onPressed: _videos.isEmpty ? null : () {
               setState(() {
                 if (_selectedIds.length == _videos.length) {
                   _selectedIds.clear();
@@ -216,6 +264,14 @@ class _BatchPageState extends State<BatchPage> {
     
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
+    
+    if (crawler == null) {
+      setState(() {
+        _isLoading = false;
+        _status = '请先选择站点';
+      });
+      return;
+    }
     
     final videos = <VideoInfo>[];
     for (var p = _pageStart; p <= _pageEnd; p++) {
