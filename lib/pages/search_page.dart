@@ -692,6 +692,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       scrollController: _scrollController,
       onToggleSelection: _toggleSelection,
       onLoadMore: _isAuthorPageMode ? _loadMoreAuthorVideos : _loadMore,
+      showSettings: _showSettings,
     );
   }
   
@@ -782,6 +783,7 @@ class _VideoResultsWidget extends StatelessWidget {
   final ScrollController scrollController;
   final Function(String) onToggleSelection;
   final VoidCallback? onLoadMore;
+  final bool showSettings;  // 设置区域是否显示
 
   _VideoResultsWidget({
     required this.videos,
@@ -791,6 +793,7 @@ class _VideoResultsWidget extends StatelessWidget {
     required this.scrollController,
     required this.onToggleSelection,
     this.onLoadMore,
+    this.showSettings = true,
   });
 
   @override
@@ -800,13 +803,16 @@ class _VideoResultsWidget extends StatelessWidget {
 
   Widget _buildListView(BuildContext context) {
     // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
-    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    // 如果设置区域显示，则不需要额外padding（设置区域已经有了）
+    final topPadding = showSettings 
+        ? 8.0 
+        : kToolbarHeight + MediaQuery.of(context).padding.top + 8;
     
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return ListView.builder(
           controller: scrollController,
-          padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
+          padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 8),
           itemCount: videos.length + (hasMore ? 1 : 0),
           itemBuilder: (context, index) {
             if (index == videos.length) {
@@ -928,13 +934,16 @@ class _VideoResultsWidget extends StatelessWidget {
 
   Widget _buildGridView(BuildContext context) {
     // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
-    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    // 如果设置区域显示，则不需要额外padding（设置区域已经有了）
+    final topPadding = showSettings 
+        ? 8.0 
+        : kToolbarHeight + MediaQuery.of(context).padding.top + 8;
     
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return GridView.builder(
           controller: scrollController,
-          padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
+          padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 8),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             childAspectRatio: 0.75,

@@ -522,11 +522,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   Widget _buildListView() {
     final appState = context.read<AppState>();
     // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
-    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    // 如果设置区域显示，则不需要额外padding（设置区域已经有了）
+    final topPadding = _showSettings 
+        ? 8.0 
+        : kToolbarHeight + MediaQuery.of(context).padding.top + 8;
     
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
+      padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 8),
       itemCount: _videos.length + (_hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index == _videos.length) {
@@ -655,11 +658,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   Widget _buildGridView() {
     final appState = context.read<AppState>();
     // 顶部padding：AppBar高度 + 状态栏高度（因为内容延伸到AppBar下方）
-    final topPadding = kToolbarHeight + MediaQuery.of(context).padding.top;
+    // 如果设置区域显示，则不需要额外padding（设置区域已经有了）
+    final topPadding = _showSettings 
+        ? 8.0 
+        : kToolbarHeight + MediaQuery.of(context).padding.top + 8;
     
     return GridView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.only(left: 8, right: 8, top: topPadding + 8, bottom: 8),
+      padding: EdgeInsets.only(left: 8, right: 8, top: topPadding, bottom: 8),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         childAspectRatio: 0.75,
