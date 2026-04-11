@@ -31,7 +31,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   bool _showBackToTop = false;
   bool _showSettings = true;  // 是否显示设置区域
   double _lastScrollOffset = 0;  // 上次滚动位置
-  double _appBarOpacity = 1.0;  // AppBar透明度
+  double _appBarOpacity = 0.95;  // AppBar透明度（初始半透明）
   
   @override
   bool get wantKeepAlive => true;  // 保持页面状态
@@ -56,8 +56,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       setState(() => _showBackToTop = showBtn);
     }
     
-    // 计算AppBar透明度
-    final opacity = 1.0 - (_scrollController.offset / 200).clamp(0.0, 0.85);
+    // 计算AppBar透明度（滚动150像素后几乎完全透明）
+    final opacity = (0.95 - _scrollController.offset / 150).clamp(0.1, 0.95);
     if (opacity != _appBarOpacity) {
       setState(() => _appBarOpacity = opacity);
     }
@@ -188,9 +188,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     return Consumer<AppState>(
       builder: (context, appState, _) {
         return Scaffold(
+          extendBodyBehindAppBar: true,  // 让内容延伸到AppBar下方
           appBar: AppBar(
             backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(_appBarOpacity),
-            elevation: _appBarOpacity < 0.5 ? 0 : 4,
+            elevation: 0,  // 始终无阴影，透明效果更好
+            scrolledUnderElevation: 4,  // 滚动时有阴影
             // 左侧文字跟随透明度隐藏
             title: Opacity(
               opacity: _appBarOpacity,
@@ -288,6 +290,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             children: [
               Column(
                 children: [
+                  // 顶部空间（避免内容被AppBar遮挡）
+                  SizedBox(height: kToolbarHeight + MediaQuery.of(context).padding.top),
                   // 设置区域（可收缩）
                   AnimatedContainer(
                     duration: Duration(milliseconds: 200),
