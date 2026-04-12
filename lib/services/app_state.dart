@@ -22,6 +22,9 @@ class AppState extends ChangeNotifier {
   
   // Debug模式
   bool debugMode = false;
+  
+  // Debug: 保存HTML到文件
+  bool saveDebugHtml = false;
 
   // 实时日志开关
   bool realtimeLogEnabled = false;
@@ -68,6 +71,8 @@ class AppState extends ChangeNotifier {
   CrawlerCore? get crawler {
     if (currentSite == null) return null;
     _crawler ??= CrawlerCore(baseUrl: currentSite!);
+    // 设置调试HTML开关
+    _crawler!.saveDebugHtml = saveDebugHtml;
     // 设置下载管理器
     if (_crawler != null && downloadDir.isNotEmpty) {
       _downloadManager.setup(_crawler!, downloadDir);
@@ -283,6 +288,16 @@ class AppState extends ChangeNotifier {
   Future<void> toggleDebug(bool enable) async {
     debugMode = enable;
     await logger.toggle(enable);
+    notifyListeners();
+  }
+  
+  // 切换保存HTML开关
+  void toggleSaveDebugHtml(bool enable) {
+    saveDebugHtml = enable;
+    // 同步到crawler
+    if (_crawler != null) {
+      _crawler!.saveDebugHtml = enable;
+    }
     notifyListeners();
   }
 

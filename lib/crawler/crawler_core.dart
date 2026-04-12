@@ -24,6 +24,9 @@ class CrawlerCore {
   Database? _db;
   bool _dbInitialized = false;
   
+  // Debug开关：是否保存HTML到文件
+  bool saveDebugHtml = false;
+  
   // 回调
   Function(String msg, String level)? onLog;
   Function(double progress, String msg)? onProgress;
@@ -49,14 +52,18 @@ class CrawlerCore {
   
   /// 保存 HTML 到文件（调试用）
   Future<void> _saveHtmlToFile(String html, String listType, int page) async {
+    // 检查开关
+    if (!saveDebugHtml) return;
+    
     try {
-      // 保存到视频下载目录下的 debug_html 子目录
+      // 保存到外部存储根目录下的 debug_html 文件夹
       final baseDir = await getExternalStorageDirectory();
       if (baseDir == null) {
         await logger.log('Debug', '无法获取外部存储目录');
         return;
       }
-      final dir = Directory('${baseDir.path}/91Download/debug_html');
+      // 简化路径：直接在包目录下的 debug_html 文件夹
+      final dir = Directory('${baseDir.path}/debug_html');
       if (!await dir.exists()) {
         await dir.create(recursive: true);
       }

@@ -560,6 +560,15 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
                 await appState.toggleDebug(v);
               },
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('保存HTML'),
+              subtitle: Text('保存请求的HTML到文件，用于调试'),
+              value: appState.saveDebugHtml,
+              onChanged: (v) {
+                appState.toggleSaveDebugHtml(v);
+              },
+            ),
             if (appState.debugMode) ...[
               SizedBox(height: 8),
               Row(
