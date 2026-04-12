@@ -142,39 +142,24 @@ class CrawlerCore {
     }
     
     final url = '$baseUrl/${urlPattern.replaceAll('{page}', page.toString())}';
-    // 添加随机参数避免CDN缓存（时间戳+随机数）
-    final randomParam = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
-    final urlWithCache = url.contains('?') ? '$url&_cache=$randomParam' : '$url?_cache=$randomParam';
-    await logger.log('Crawler', '网络请求: GET $url (siteType=$_siteType)');
+    // ✅ 修复4：使用更轻量的参数格式，避免触发反爬
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final urlWithCache = url.contains('?') ? '$url&_t=$ts' : '$url?_t=$ts';
+    
+    // ✅ 修复1：日志记录实际请求的 URL
+    await logger.log('Crawler', '网络请求: GET $urlWithCache (siteType=$_siteType)');
     
     try {
       String html;
       
-      if (_siteType == "porn91") {
-        // porn91 需要先 GET 获取 cookie，然后 POST 提交语言设置
-        // Step 1: GET 请求获取初始 cookie
-        final getResp = await _dio.get(urlWithCache, options: _noCacheOptions);
-        
-        // Step 2: POST 请求提交语言设置
-        final postResp = await _dio.post(
-          urlWithCache,
-          data: {'session_language': 'cn_CN'},
-          options: Options(
-            contentType: Headers.formUrlEncodedContentType,
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache',
-              'Expires': '0',
-            },
-            extra: {'cache': false},
-          ),
-        );
-        html = postResp.data.toString();
-      } else {
-        // original CMS 直接 GET
-        final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
-        html = resp.data.toString();
-      }
+      // ✅ 修复2：porn91 只需一次 GET，语言 Cookie 已在 _initDio 里设好
+      // 不需要 POST，language=cn_CN 通过 Cookie header 传递
+      final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
+      html = resp.data.toString();
+      
+      // ✅ 调试日志：记录实际收到的 HTML 长度和前500字符
+      await logger.log('Crawler', '收到响应: ${html.length} 字节, URL=$urlWithCache');
+      await logger.log('Debug', 'HTML前500字符: ${html.substring(0, html.length > 500 ? 500 : html.length)}');
       
       // 根据站点类型选择解析方法
       List<VideoInfo> videos;
@@ -184,10 +169,13 @@ class CrawlerCore {
         videos = _parseVideoListOriginal(html);
       }
       
+      // ✅ 关键调试日志：记录 URL 和解析结果的对应关系
+      await logger.log('Crawler', '解析结果: URL=$urlWithCache -> ${videos.length} 个视频');
+      
       return videos;
       
     } catch (e) {
-      await logger.log('Crawler', '获取视频列表失败: $e');
+      await logger.log('Crawler', '获取视频列表失败: $e (URL=$urlWithCache)');
       return [];
     }
   }
@@ -492,14 +480,20 @@ class CrawlerCore {
   Future<List<VideoInfo>> searchVideos(String keyword, {int page = 1, String sort = "new"}) async {
     // 根据站点类型构建搜索URL
     final url = CrawlerConfig.buildSearchUrl(baseUrl, _siteType, keyword, page: page, sort: sort);
-    await logger.log('Crawler', '网络请求: 搜索视频 $url (siteType=$_siteType)');
+    
+    // ✅ 修复：使用更轻量的参数格式
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final urlWithCache = url.contains('?') ? '$url&_t=$ts' : '$url?_t=$ts';
+    
+    // ✅ 修复：日志记录实际请求的 URL
+    await logger.log('Crawler', '网络请求: 搜索视频 $urlWithCache (siteType=$_siteType)');
     
     try {
-      // 添加随机参数避免CDN缓存
-      final randomParam = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
-      final urlWithCache = url.contains('?') ? '$url&_cache=$randomParam' : '$url?_cache=$randomParam';
       final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
       final html = resp.data.toString();
+      
+      // ✅ 调试日志
+      await logger.log('Crawler', '搜索响应: ${html.length} 字节');
       
       // 根据站点类型选择解析方法
       List<VideoInfo> videos;
@@ -509,9 +503,11 @@ class CrawlerCore {
         videos = _parseVideoListOriginal(html);
       }
       
+      await logger.log('Crawler', '搜索结果: ${videos.length} 个视频');
+      
       return videos;
     } catch (e) {
-      await logger.log('Crawler', '搜索失败: $e');
+      await logger.log('Crawler', '搜索失败: $e (URL=$urlWithCache)');
       return [];
     }
   }
@@ -528,12 +524,14 @@ class CrawlerCore {
       url = '$baseUrl/search.htm?search=${Uri.encodeComponent(keyword)}';
     }
     
-    await logger.log('Crawler', '网络请求: 搜索作者 $url');
+    // ✅ 修复：使用更轻量的参数格式
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final urlWithCache = url.contains('?') ? '$url&_t=$ts' : '$url?_t=$ts';
+    
+    // ✅ 修复：日志记录实际请求的 URL
+    await logger.log('Crawler', '网络请求: 搜索作者 $urlWithCache');
     
     try {
-      // 添加随机参数避免CDN缓存
-      final randomParam = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
-      final urlWithCache = url.contains('?') ? '$url&_cache=$randomParam' : '$url?_cache=$randomParam';
       final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
       final html = resp.data.toString();
       
@@ -583,10 +581,15 @@ class CrawlerCore {
       url = '$baseUrl/user-$page.htm?author=$authorId';
     }
     
-    await logger.log('Crawler', '网络请求: 获取作者视频 $url (siteType=$_siteType)');
+    // ✅ 修复：使用更轻量的参数格式
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final urlWithCache = url.contains('?') ? '$url&_t=$ts' : '$url?_t=$ts';
+    
+    // ✅ 修复：日志记录实际请求的 URL
+    await logger.log('Crawler', '网络请求: 获取作者视频 $urlWithCache (siteType=$_siteType)');
     
     try {
-      final resp = await _dio.get(url, options: _noCacheOptions);
+      final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
       final html = resp.data.toString();
       
       List<VideoInfo> videos;
@@ -598,7 +601,7 @@ class CrawlerCore {
       
       return videos;
     } catch (e) {
-      await logger.log('Crawler', '获取作者视频失败: $e');
+      await logger.log('Crawler', '获取作者视频失败: $e (URL=$urlWithCache)');
       return [];
     }
   }
@@ -608,14 +611,18 @@ class CrawlerCore {
   /// 获取视频详情（m3u8地址等）
   Future<VideoInfo?> getVideoDetail(VideoInfo video) async {
     try {
-      // 添加随机参数避免CDN缓存
-      final randomParam = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(99999)}';
+      // ✅ 修复：使用更轻量的参数格式
+      final ts = DateTime.now().millisecondsSinceEpoch;
       final urlWithCache = video.url.contains('?') 
-          ? '${video.url}&_cache=$randomParam' 
-          : '${video.url}?_cache=$randomParam';
+          ? '${video.url}&_t=$ts' 
+          : '${video.url}?_t=$ts';
+      
+      await logger.log('Crawler', '网络请求: 获取视频详情 $urlWithCache');
       
       final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
       final html = resp.data.toString();
+      
+      await logger.log('Crawler', '视频详情响应: ${html.length} 字节');
       
       String? videoUrl;
       String? extractionMethod;
