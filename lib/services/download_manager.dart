@@ -145,7 +145,7 @@ class DownloadManager extends ChangeNotifier {
       );
       _dbInitialized = true;
     } catch (e) {
-      print('[DownloadManager] 数据库初始化失败: $e');
+      Logger().log('Download', '数据库初始化失败: $e');
     }
   }
   
@@ -403,7 +403,7 @@ class DownloadManager extends ChangeNotifier {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     } catch (e) {
-      print('[DownloadManager] 保存任务失败: $e');
+      Logger().log('Download', '保存任务失败: $e');
     }
   }
   
@@ -415,7 +415,7 @@ class DownloadManager extends ChangeNotifier {
     try {
       await _db!.delete('download_tasks', where: 'id = ?', whereArgs: [taskId]);
     } catch (e) {
-      print('[DownloadManager] 删除任务失败: $e');
+      Logger().log('Download', '删除任务失败: $e');
     }
   }
   
@@ -458,7 +458,7 @@ class DownloadManager extends ChangeNotifier {
         await logger.log('Download', '从数据库恢复了 ${_tasks.length} 个下载任务');
       }
     } catch (e) {
-      print('[DownloadManager] 恢复任务失败: $e');
+      Logger().log('Download', '恢复任务失败: $e');
     }
   }
 }
