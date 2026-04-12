@@ -497,12 +497,8 @@ class CrawlerCore {
       // porn91 作者主页URL格式
       url = '$baseUrl/author.php?author=$authorId&page=$page';
     } else {
-      // original CMS
-      if (page == 1) {
-        url = '$baseUrl/user.htm?author=$authorId';
-      } else {
-        url = '$baseUrl/user-$page.htm?author=$authorId';
-      }
+      // original CMS - 分页格式：user.htm?author=xxx&page=N
+      url = '$baseUrl/user.htm?author=$authorId&page=$page';
     }
     
     await logger.log('Crawler', '网络请求: 获取作者视频 $url (siteType=$_siteType)');
