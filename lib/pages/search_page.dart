@@ -464,22 +464,79 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 搜索框
+            // 第一行：排序 + 搜索模式（像图片里那样并排）
+            Consumer<AppState>(
+              builder: (context, appState, _) {
+                final siteType = appState.crawler?.siteType ?? 'original';
+                final showSort = !_isAuthorMode && siteType != 'porn91';
+                
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 排序选择（仅视频模式 + original CMS）
+                    if (showSort) ...[
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _sortBy,
+                            isDense: true,
+                            style: TextStyle(fontSize: 12),
+                            items: [
+                              DropdownMenuItem(value: 'default', child: Text('默认')),
+                              DropdownMenuItem(value: 'new', child: Text('最新')),
+                              DropdownMenuItem(value: 'hot', child: Text('最热')),
+                            ],
+                            onChanged: (v) {
+                              if (v != null && v != _sortBy) {
+                                setState(() => _sortBy = v);
+                                if (_lastKeyword.isNotEmpty) {
+                                  _search();
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                    ],
+                    // 搜索模式选择
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<bool>(
+                          value: _isAuthorMode,
+                          isDense: true,
+                          style: TextStyle(fontSize: 12),
+                          items: [
+                            DropdownMenuItem(value: false, child: Text('搜视频')),
+                            DropdownMenuItem(value: true, child: Text('搜作者')),
+                          ],
+                          onChanged: (v) => setState(() => _isAuthorMode = v!),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            SizedBox(height: 8),
+            // 第二行：搜索框 + 按钮
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 模式切换
-                DropdownButton<bool>(
-                  value: _isAuthorMode,
-                  items: [
-                    DropdownMenuItem(value: false, child: Text('搜视频')),
-                    DropdownMenuItem(value: true, child: Text('搜作者')),
-                  ],
-                  onChanged: (v) => setState(() => _isAuthorMode = v!),
-                ),
-                SizedBox(width: 8),
                 SizedBox(
-                  width: 180,
+                  width: 200,
                   child: TextField(
                     controller: _keywordController,
                     decoration: InputDecoration(
@@ -499,40 +556,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 ),
               ],
             ),
-            SizedBox(height: 8),
-            // 排序选择（仅在视频搜索模式显示，仅 original CMS 支持）
-            if (!_isAuthorMode)
-              Consumer<AppState>(
-                builder: (context, appState, _) {
-                  final siteType = appState.crawler?.siteType ?? 'original';
-                  if (siteType == 'porn91') {
-                    return SizedBox.shrink();  // porn91 不支持排序
-                  }
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('排序: ', style: TextStyle(fontSize: 12)),
-                      DropdownButton<String>(
-                        value: _sortBy,
-                        isDense: true,
-                        items: [
-                          DropdownMenuItem(value: 'default', child: Text('默认')),
-                          DropdownMenuItem(value: 'new', child: Text('最新')),
-                          DropdownMenuItem(value: 'hot', child: Text('最热')),
-                        ],
-                        onChanged: (v) {
-                          if (v != null && v != _sortBy) {
-                            setState(() => _sortBy = v);
-                            if (_lastKeyword.isNotEmpty) {
-                              _search();
-                            }
-                          }
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
           ],
         ),
       ),
