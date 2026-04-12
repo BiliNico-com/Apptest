@@ -208,9 +208,6 @@ class CrawlerCore {
       
       final title = titleMatch.group(1)!.trim();
       
-      // 日志记录配对信息
-      logger.log('List', '[$i] viewkey=$viewkey, 封面ID=$coverId, 标题=${title.length > 20 ? title.substring(0, 20) + "..." : title}');
-      
       // 提取作者
       String? author;
       final authorMatch = CrawlerConfig.authorPattern.firstMatch(wellContent);
@@ -248,6 +245,9 @@ class CrawlerCore {
         duration: duration,
       ));
     }
+    
+    // 循环结束后输出汇总日志
+    logger.log('List', '解析完成: ${videos.length} 个视频');
     
     return videos;
   }
