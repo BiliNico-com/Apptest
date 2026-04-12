@@ -385,7 +385,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     ];
   }
 
-  /// 搜索栏（吸顶内容）
+  /// 搜索栏（吸顶内容）- 深色模式优化风格
   Widget _buildSearchBar(AppState appState) {
     final siteType = appState.crawler?.siteType ?? 'original';
     final showSort = !_isAuthorMode && siteType != 'porn91';
@@ -394,135 +394,155 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: Row(
-        children: [
-          // 搜索输入框 + 搜索模式选择（合并为一个容器）
-          Expanded(
-            child: Container(
-              height: 40,
-              padding: EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: isDark ? Color(0xFF1a1a1a) : Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[300]!, width: 0.5),
-                boxShadow: [
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          // 深色模式用更暗的背景，几乎和页面融为一体
+          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          // 弱化边框，深色模式下几乎不可见
+          border: Border.all(
+            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade300,
+            width: 0.5,
+          ),
+          // 深色模式去掉阴影，或只用极淡的内发光
+          boxShadow: isDark
+              ? [
                   BoxShadow(
-                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.08),
-                    blurRadius: 16,
+                    color: Colors.white.withOpacity(0.03),
+                    blurRadius: 1,
+                    spreadRadius: 0.5,
                   ),
+                ]
+              : [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withOpacity(0.08),
                     blurRadius: 8,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 2),
                   ),
                 ],
-              ),
-              child: Row(
-                children: [
-                  // 搜索输入框
-                  Expanded(
-                    child: TextField(
-                      controller: _keywordController,
-                      textAlign: TextAlign.center,
-                      decoration: InputDecoration(
-                        hintText: '输入关键词',
-                        hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[400]),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        isDense: true,
-                      ),
-                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white : Colors.black87),
-                      onSubmitted: (_) => _search(),
-                      textInputAction: TextInputAction.search,
+        ),
+        child: Row(
+          children: [
+            // 输入框
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(left: 14),
+                child: TextField(
+                  controller: _keywordController,
+                  style: TextStyle(
+                    color: isDark ? Colors.white.withOpacity(0.9) : Colors.black87,
+                    fontSize: 14,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '输入关键词...',
+                    hintStyle: TextStyle(
+                      color: isDark ? Colors.white.withOpacity(0.3) : Colors.grey.shade500,
+                      fontSize: 14,
                     ),
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
-                  // 分隔线
-                  Container(
-                    width: 1,
-                    height: 20,
-                    color: isDark ? Colors.white24 : Colors.grey[300],
-                  ),
-                  // 搜索模式选择
-                  DropdownButtonHideUnderline(
-                    child: DropdownButton<bool>(
-                      value: _isAuthorMode,
-                      isDense: true,
-                      underline: null,
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87),
-                      icon: Icon(Icons.arrow_drop_down, size: 18, color: isDark ? Colors.white54 : Colors.grey[600]),
-                      items: [
-                        DropdownMenuItem(value: false, child: Text('搜视频', style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87))),
-                        DropdownMenuItem(value: true, child: Text('搜作者', style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87))),
-                      ],
-                      onChanged: (v) => setState(() => _isAuthorMode = v!),
-                    ),
-                  ),
-                ],
+                  onSubmitted: (_) => _search(),
+                  textInputAction: TextInputAction.search,
+                ),
               ),
             ),
-          ),
-          // 排序选择（搜视频模式 + original CMS）
-          if (showSort) ...[
-            SizedBox(width: 8),
+            // 分隔线 — 深色模式下更淡
             Container(
-              height: 40,
-              padding: EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: isDark ? Color(0xFF1a1a1a) : Colors.white.withOpacity(0.95),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.grey[300]!, width: 0.5),
+              width: 1,
+              height: 18,
+              color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade300,
+            ),
+            // 搜索类型下拉
+            _buildSearchDropdown(
+              value: _isAuthorMode,
+              items: [DropdownMenuItem(value: false, child: Text('搜视频')), DropdownMenuItem(value: true, child: Text('搜作者'))],
+              onChanged: (v) => setState(() => _isAuthorMode = v!),
+              isDark: isDark,
+            ),
+            // 排序下拉（仅视频搜索模式 + original CMS）
+            if (showSort) ...[
+              Container(
+                width: 1,
+                height: 18,
+                color: isDark ? Colors.white.withOpacity(0.06) : Colors.grey.shade300,
               ),
-              child: Center(
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _sortBy,
-                    isDense: true,
-                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87),
-                    icon: Icon(Icons.arrow_drop_down, size: 18, color: isDark ? Colors.white54 : Colors.grey[600]),
-                    items: [
-                      DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87))),
-                      DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87))),
-                      DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 11, color: isDark ? Colors.white : Colors.black87))),
-                    ],
-                    onChanged: (v) {
-                      if (v != null && v != _sortBy) {
-                        setState(() => _sortBy = v);
-                        if (_lastKeyword.isNotEmpty) {
-                          _search();
-                        }
-                      }
-                    },
-                  ),
+              _buildSearchDropdown(
+                value: _sortBy,
+                items: [
+                  DropdownMenuItem(value: 'default', child: Text('默认')),
+                  DropdownMenuItem(value: 'new', child: Text('最新')),
+                  DropdownMenuItem(value: 'hot', child: Text('最热')),
+                ],
+                onChanged: (v) {
+                  if (v != null && v != _sortBy) {
+                    setState(() => _sortBy = v);
+                    if (_lastKeyword.isNotEmpty) _search();
+                  }
+                },
+                isDark: isDark,
+              ),
+            ],
+            const SizedBox(width: 4),
+            // 蓝色搜索按钮 — 深色模式下稍微暗一点
+            GestureDetector(
+              onTap: _search,
+              child: Container(
+                width: 36,
+                height: 36,
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF2E7AE6) : const Color(0xFF3A7BF7),
+                  shape: BoxShape.circle,
                 ),
+                child: const Icon(Icons.search, color: Colors.white, size: 20),
               ),
             ),
           ],
-          SizedBox(width: 8),
-          // 搜索按钮（渐变色）
-          GestureDetector(
-            onTap: _search,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF4a9eff), Color(0xFF2d7dd2)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0xFF4a9eff).withOpacity(0.4),
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.search, color: Colors.white, size: 18),
-            ),
+        ),
+      ),
+    );
+  }
+
+  /// 搜索栏下拉菜单
+  Widget _buildSearchDropdown<T>({
+    required T value,
+    required List<DropdownMenuItem<T>> items,
+    required ValueChanged<T?> onChanged,
+    required bool isDark,
+  }) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        canvasColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isDense: true,
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            size: 16,
+            color: isDark ? Colors.white.withOpacity(0.5) : Colors.grey.shade600,
           ),
-        ],
+          style: TextStyle(
+            color: isDark ? Colors.white.withOpacity(0.85) : Colors.black87,
+            fontSize: 12,
+          ),
+          items: items.map((e) => DropdownMenuItem(
+            value: e.value,
+            child: Text(
+              (e.child as Text).data ?? '',
+              style: TextStyle(
+                color: isDark ? Colors.white.withOpacity(0.85) : Colors.black87,
+                fontSize: 12,
+              ),
+            ),
+          )).toList(),
+          onChanged: onChanged,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+        ),
       ),
     );
   }
