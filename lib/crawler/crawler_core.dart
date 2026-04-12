@@ -128,6 +128,9 @@ class CrawlerCore {
     }
     
     final url = '$baseUrl/${urlPattern.replaceAll('{page}', page.toString())}';
+    // 添加时间戳参数避免CDN缓存
+    final cacheBuster = '_t=${DateTime.now().millisecondsSinceEpoch}';
+    final urlWithCache = url.contains('?') ? '$url&$cacheBuster' : '$url?$cacheBuster';
     await logger.log('Crawler', '网络请求: GET $url (siteType=$_siteType)');
     
     try {
@@ -136,11 +139,11 @@ class CrawlerCore {
       if (_siteType == "porn91") {
         // porn91 需要先 GET 获取 cookie，然后 POST 提交语言设置
         // Step 1: GET 请求获取初始 cookie
-        final getResp = await _dio.get(url);
+        final getResp = await _dio.get(urlWithCache);
         
         // Step 2: POST 请求提交语言设置
         final postResp = await _dio.post(
-          url,
+          urlWithCache,
           data: {'session_language': 'cn_CN'},
           options: Options(
             contentType: Headers.formUrlEncodedContentType,
@@ -149,7 +152,7 @@ class CrawlerCore {
         html = postResp.data.toString();
       } else {
         // original CMS 直接 GET
-        final resp = await _dio.get(url);
+        final resp = await _dio.get(urlWithCache);
         html = resp.data.toString();
       }
       
