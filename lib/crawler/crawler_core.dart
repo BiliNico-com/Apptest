@@ -230,11 +230,9 @@ class CrawlerCore {
         // 从URL中提取文件名作为封面ID（如 .../1191387.jpg -> 1191387）
         final idMatch = RegExp(r'/(\d+)\.(?:jpe?g|webp|png)', caseSensitive: false)
             .firstMatch(imgSrc);
-        if (idMatch != null) {
+        if (idMatch != null && idMatch.group(1) != null) {
           coverId = idMatch.group(1);
-          if (coverId != null) {
-            cover = VideoInfo.buildCoverUrl(coverId!);
-          }
+          cover = VideoInfo.buildCoverUrl(coverId!);
         } else if (imgSrc.startsWith('http')) {
           cover = imgSrc;
         }
@@ -301,16 +299,14 @@ class CrawlerCore {
     Logger().logSync('Parse', '解析 original HTML, 长度: ${html.length}');
     
     // 策略1: 完整容器解析 - 匹配 thumbnail 容器
-    // <div class="col-xs-6 col-md-3">
-    //   <div class="thumbnail">
-    //     <a>封面</a>
-    //     <div class="caption title">标题</div>
-    //     <div class="info">作者</div>    
-    //   </div>
+    // <div class="thumbnail">
+    //   <a>封面</a>
+    //   <div class="caption title">标题</div>
+    //   <div class="info"><p>&nbsp;&nbsp;<a href="user.htm?author=xxx">作者名</a></p></div>
     // </div>
-    // ✅ 修复：使用前瞻断言，确保匹配到 thumbnail 的真正结束
+    // ✅ 修复：匹配两个连续的 </div>，确保包含 <div class="info"> 部分
     final containerPattern = RegExp(
-      r'<div[^>]*class="[^"]*thumbnail[^"]*"[^>]*>([\s\S]*?)</div>\s*(?=</div>)',
+      r'<div[^>]*class="[^"]*thumbnail[^"]*"[^>]*>([\s\S]*?)</div>\s*</div>',
       caseSensitive: false,
     );
     
