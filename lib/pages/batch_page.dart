@@ -805,4 +805,38 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       ),
     );
   }
+
+  /// 开始下载选中的视频
+  Future<void> _startDownload() async {
+    final appState = context.read<AppState>();
+    
+    // 获取选中的视频
+    final selectedVideos = _videos.where((v) => _selectedIds.contains(v.id)).toList();
+    
+    // 添加到下载管理器
+    for (final video in selectedVideos) {
+      appState.downloadManager.addTask(video);
+    }
+    
+    // 显示提示
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已添加 ${selectedVideos.length} 个视频到下载队列'),
+          action: SnackBarAction(
+            label: '查看',
+            onPressed: () {
+              // 切换到下载页面（索引2）
+              appState.navigateToPage?.call(2);
+            },
+          ),
+        ),
+      );
+    }
+    
+    // 清空选择
+    setState(() {
+      _selectedIds.clear();
+    });
+  }
 }
