@@ -281,7 +281,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   List<Widget> _buildOverlays(AppState appState) {
     return [
       // 页码跳转悬浮胶囊（仅视频搜索模式显示）
-      if (!_isAuthorMode) _buildBottomPageNavigation(),
+      if (!_isAuthorMode) _buildBottomPageNavigation(appState),
       // 回顶部按钮
       if (_showBackToTop && appState.showBackToTop)
         Positioned(
@@ -387,6 +387,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   Widget _buildSearchBar(AppState appState) {
     final siteType = appState.crawler?.siteType ?? 'original';
     final showSort = !_isAuthorMode && siteType != 'porn91';
+    final isDark = appState.isDarkMode;
     
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -395,7 +396,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
+            color: isDark ? Colors.grey[850] : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -418,9 +419,9 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 8),
                     isDense: true,
-                    hintStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                   ),
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                   onSubmitted: (_) => _search(),
                   textInputAction: TextInputAction.search,
                 ),
@@ -430,19 +431,19 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 Container(
                   padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: isDark ? Colors.grey[800] : Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[400]!),
+                    border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[400]!),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _sortBy,
                       isDense: true,
-                      style: TextStyle(fontSize: 11, color: Colors.black87),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
                       items: [
-                        DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 11, color: Colors.black87))),
-                        DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 11, color: Colors.black87))),
-                        DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 11, color: Colors.black87))),
+                        DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
                       ],
                       onChanged: (v) {
                         if (v != null && v != _sortBy) {
@@ -499,7 +500,9 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   }
 
   /// 底部页码跳转区域（悬浮胶囊）
-  Widget _buildBottomPageNavigation() {
+  Widget _buildBottomPageNavigation(AppState appState) {
+    final isDark = appState.isDarkMode;
+    
     return Positioned(
       bottom: 16,
       left: 0,
@@ -508,7 +511,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
+            color: isDark ? Colors.grey[850] : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -524,7 +527,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               // 当前页显示
               Text(
                 '第$_currentPage页',
-                style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey[800], fontWeight: FontWeight.w500),
               ),
               SizedBox(width: 12),
               // 上一页按钮
@@ -535,13 +538,17 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 child: Container(
                   padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: (_currentPage <= 1) ? Colors.grey[300] : Colors.blue[100],
+                    color: (_currentPage <= 1) 
+                      ? (isDark ? Colors.grey[700] : Colors.grey[300])
+                      : (isDark ? Colors.blue[900] : Colors.blue[100]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.arrow_left,
                     size: 18,
-                    color: (_currentPage <= 1) ? Colors.grey[500] : Colors.blue[700],
+                    color: (_currentPage <= 1) 
+                      ? (isDark ? Colors.grey[500] : Colors.grey[500])
+                      : (isDark ? Colors.blue[300] : Colors.blue[700]),
                   ),
                 ),
               ),
@@ -551,18 +558,18 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 width: 60,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  border: Border.all(color: Colors.grey[400]!),
+                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                  border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[400]!),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: TextField(
                   controller: _pageController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                   decoration: InputDecoration(
                     hintText: '回车',
-                    hintStyle: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                    hintStyle: TextStyle(fontSize: 10, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                     border: InputBorder.none,
                     isDense: true,
@@ -585,13 +592,13 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 child: Container(
                   padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.blue[100],
+                    color: isDark ? Colors.blue[900] : Colors.blue[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.arrow_right,
                     size: 18,
-                    color: Colors.blue[700],
+                    color: isDark ? Colors.blue[300] : Colors.blue[700],
                   ),
                 ),
               ),

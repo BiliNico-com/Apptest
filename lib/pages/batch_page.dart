@@ -698,6 +698,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   
   /// 底部页码跳转区域（悬浮胶囊）
   Widget _buildBottomPageNavigation() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final isDark = appState.isDarkMode;
+    
     return Positioned(
       bottom: 16,
       left: 0,
@@ -706,7 +709,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         child: Container(
           padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.95),
+            color: isDark ? Colors.grey[850] : Colors.white.withOpacity(0.95),
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
@@ -722,7 +725,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               // 当前页显示
               Text(
                 '第$_loadedPage页',
-                style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500),
+                style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey[800], fontWeight: FontWeight.w500),
               ),
               SizedBox(width: 12),
               // 上一页按钮
@@ -733,13 +736,17 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                 child: Container(
                   padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: (_loadedPage <= 1) ? Colors.grey[300] : Colors.blue[100],
+                    color: (_loadedPage <= 1) 
+                      ? (isDark ? Colors.grey[700] : Colors.grey[300])
+                      : (isDark ? Colors.blue[900] : Colors.blue[100]),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.arrow_left,
                     size: 18,
-                    color: (_loadedPage <= 1) ? Colors.grey[500] : Colors.blue[700],
+                    color: (_loadedPage <= 1) 
+                      ? (isDark ? Colors.grey[500] : Colors.grey[500])
+                      : (isDark ? Colors.blue[300] : Colors.blue[700]),
                   ),
                 ),
               ),
@@ -749,18 +756,18 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                 width: 60,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  border: Border.all(color: Colors.grey[400]!),
+                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                  border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[400]!),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: TextField(
                   controller: _pageController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Colors.black87),
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                   decoration: InputDecoration(
                     hintText: '回车',
-                    hintStyle: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                    hintStyle: TextStyle(fontSize: 10, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                     contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                     border: InputBorder.none,
                     isDense: true,
@@ -776,13 +783,13 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                 child: Container(
                   padding: EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.blue[100],
+                    color: isDark ? Colors.blue[900] : Colors.blue[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.arrow_right,
                     size: 18,
-                    color: Colors.blue[700],
+                    color: isDark ? Colors.blue[300] : Colors.blue[700],
                   ),
                 ),
               ),
