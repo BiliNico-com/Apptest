@@ -61,8 +61,8 @@ class MyApp extends StatelessWidget {
       child: Consumer<AppState>(
         builder: (context, appState, _) {
           // 首次构建时初始化 AppState
-          if (!appState._initialized) {
-            appState._initialized = true;
+          if (!appState.initialized) {
+            appState.initialized = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               appState.init();
             });
