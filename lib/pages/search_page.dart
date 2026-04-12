@@ -424,9 +424,9 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     focusedBorder: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                     isDense: false,
-                    hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[600]),
+                    hintStyle: TextStyle(fontSize: 11, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                   ),
-                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
                   onSubmitted: (_) => _search(),
                   textInputAction: TextInputAction.search,
                 ),
@@ -443,11 +443,11 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     child: DropdownButton<String>(
                       value: _sortBy,
                       isDense: true,
-                      style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
                       items: [
-                        DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
-                        DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
-                        DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
                       ],
                       onChanged: (v) {
                         if (v != null && v != _sortBy) {
@@ -473,10 +473,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                   child: DropdownButton<bool>(
                     value: _isAuthorMode,
                     isDense: true,
-                    style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87),
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
                     items: [
-                      DropdownMenuItem(value: false, child: Text('搜视频', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
-                      DropdownMenuItem(value: true, child: Text('搜作者', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
+                      DropdownMenuItem(value: false, child: Text('搜视频', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                      DropdownMenuItem(value: true, child: Text('搜作者', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
                     ],
                     onChanged: (v) => setState(() => _isAuthorMode = v!),
                   ),
