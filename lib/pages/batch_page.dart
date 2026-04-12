@@ -177,39 +177,64 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           body: CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // AppBar - 只保留标题，滚动时透明
+              // AppBar + 标签栏一体化，滚动时标题隐藏，标签栏吸附到顶部
               SliverAppBar(
                 pinned: true,
                 floating: true,
                 snap: false,
+                expandedHeight: 112, // AppBar(56) + 标签栏(56)
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 scrolledUnderElevation: 0,
-                flexibleSpace: ClipRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      color: Colors.black.withOpacity(0.5),
-                    ),
-                  ),
-                ),
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('批量爬取'),
-                    Text('已加载 ${_videos.length} 个视频', 
-                      style: TextStyle(fontSize: 12, color: Colors.grey)),
-                  ],
-                ),
-                actions: _buildAppBarActions(appState),
-              ),
-              // 标签栏 - 浮动吸附效果，可滑入AppBar区域
-              SliverPersistentHeader(
-                pinned: true,
-                floating: true,
-                delegate: _FloatingSettingsBarDelegate(
-                  child: _buildSettingsBar(appState),
+                flexibleSpace: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final expandRatio = ((constraints.maxHeight - 56) / 56).clamp(0.0, 1.0);
+                    final isExpanded = expandRatio > 0.5;
+                    
+                    return ClipRect(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Container(
+                          color: Colors.black.withOpacity(0.5),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // 标题区域（滚动时隐藏）
+                              AnimatedOpacity(
+                                opacity: isExpanded ? 1.0 : 0.0,
+                                duration: Duration(milliseconds: 150),
+                                child: Container(
+                                  height: 56,
+                                  padding: EdgeInsets.only(left: 16, right: 8),
+                                  child: Row(
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text('批量爬取', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                                          Text('已加载 ${_videos.length} 个视频', 
+                                            style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                        ],
+                                      ),
+                                      Spacer(),
+                                      ..._buildAppBarActions(appState),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // 标签栏（始终可见）
+                              Container(
+                                height: 56,
+                                color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+                                child: _buildSettingsBar(appState),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
               // 视频列表 - 使用 SliverFillRemaining 替代 SliverToBoxAdapter + SizedBox
@@ -909,49 +934,4 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       _selectedIds.clear();
     });
   }
-}
-
-/// 浮动吸附标签栏的 Header Delegate
-class _FloatingSettingsBarDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-  static const double _tabBarHeight = 56.0;
-  static const double _appBarHeight = 56.0;
-
-  _FloatingSettingsBarDelegate({required this.child});
-
-  @override
-  double get minExtent => _tabBarHeight;
-
-  @override
-  double get maxExtent => _tabBarHeight + _appBarHeight; // 额外空间让标签栏能滑入AppBar区域
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // 计算标签栏位置：滚动时向上移动，最终吸附到顶部
-    final scrollProgress = (shrinkOffset / _appBarHeight).clamp(0.0, 1.0);
-    final topOffset = _appBarHeight * (1 - scrollProgress);
-    
-    return Stack(
-      children: [
-        Positioned(
-          top: topOffset,
-          left: 0,
-          right: 0,
-          child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-              child: Container(
-                height: _tabBarHeight,
-                color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
-                child: child,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  bool shouldRebuild(_FloatingSettingsBarDelegate oldDelegate) => child != oldDelegate.child;
 }
