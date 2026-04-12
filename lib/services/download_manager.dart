@@ -347,13 +347,9 @@ class DownloadManager extends ChangeNotifier {
   Future<void> _savePendingTasks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final pendingTasks = _tasks.where((t) => 
-        t.status == DownloadStatus.pending || 
-        t.status == DownloadStatus.paused ||
-        t.status == DownloadStatus.downloading
-      ).toList();
       
-      final taskList = pendingTasks.map((t) {
+      // 保存所有任务（包括已完成的）
+      final taskList = _tasks.map((t) {
         return {
           'id': t.video.id,
           'url': t.video.url,
@@ -362,6 +358,7 @@ class DownloadManager extends ChangeNotifier {
           'author': t.video.author,
           'duration': t.video.duration,
           'status': t.status.index,
+          'filePath': t.filePath,
         };
       }).toList();
       
@@ -371,7 +368,7 @@ class DownloadManager extends ChangeNotifier {
     }
   }
   
-  /// 从本地恢复未完成的任务
+  /// 从本地恢复任务
   Future<void> restorePendingTasks() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -392,14 +389,15 @@ class DownloadManager extends ChangeNotifier {
         // 检查是否已存在
         if (!_taskMap.containsKey(video.id)) {
           final task = DownloadTask(id: video.id, video: video);
-          // 恢复为等待状态（需要重新下载）
-          task.status = DownloadStatus.pending;
+          // 恢复状态
+          task.status = DownloadStatus.values[item['status'] as int];
+          task.filePath = item['filePath'];
           _tasks.add(task);
           _taskMap[video.id] = task;
         }
       }
       
-      // 清除已恢复的任务
+      // 清除已保存的数据（下次保存时重新写入）
       await prefs.remove('pending_download_tasks');
       
       if (_tasks.isNotEmpty) {
