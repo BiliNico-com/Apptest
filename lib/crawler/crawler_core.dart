@@ -931,9 +931,12 @@ class CrawlerCore {
         await tempDir.create(recursive: true);
       }
       
+      // 记录下载状态：true=成功，false=失败
+      final downloaded = List<bool>.filled(tsUrls.length, false);
+      
       // 并发下载 TS 切片
       int success = 0;
-      final futures = <Future>[];
+      var futures = <Future<void>>[];
       
       for (var i = 0; i < tsUrls.length; i++) {
         if (_stopFlag) break;
@@ -943,8 +946,10 @@ class CrawlerCore {
         
         final tsUrl = tsUrls[i];
         final tsPath = '${tempDir.path}/seg_${i.toString().padLeft(5, '0')}.ts';
+        final index = i;  // 闭包捕获
         
         futures.add(_downloadTs(tsUrl, tsPath).then((ok) {
+          downloaded[index] = ok;
           if (ok) {
             success++;
             onProgress?.call(success / tsUrls.length, '下载中 $success/${tsUrls.length}');
@@ -967,9 +972,73 @@ class CrawlerCore {
         return false;
       }
       
+      // ✅ 新增：重试失败的切片（最多3轮）
+      var failedIndices = <int>[];
+      for (var i = 0; i < downloaded.length; i++) {
+        if (!downloaded[i]) {
+          failedIndices.add(i);
+        }
+      }
+      
+      for (var retryRound = 1; retryRound <= 3 && failedIndices.isNotEmpty; retryRound++) {
+        onLog?.call('重试第 $retryRound 轮，${failedIndices.length} 个切片失败', 'warn');
+        
+        final stillFailed = <int>[];
+        futures = [];
+        
+        for (final idx in failedIndices) {
+          if (_stopFlag) break;
+          
+          final tsUrl = tsUrls[idx];
+          final tsPath = '${tempDir.path}/seg_${idx.toString().padLeft(5, '0')}.ts';
+          
+          futures.add(_downloadTs(tsUrl, tsPath).then((ok) {
+            if (ok) {
+              downloaded[idx] = true;
+              success++;
+              onProgress?.call(success / tsUrls.length, '重试中 $success/${tsUrls.length}');
+            } else {
+              stillFailed.add(idx);
+            }
+          }));
+          
+          if (futures.length >= CrawlerConfig.maxConcurrentDownloads) {
+            await Future.wait(futures);
+            futures.clear();
+          }
+        }
+        
+        if (futures.isNotEmpty) {
+          await Future.wait(futures);
+        }
+        
+        failedIndices = stillFailed;
+        
+        if (_stopFlag) {
+          onLog?.call('下载已停止', 'warn');
+          return false;
+        }
+      }
+      
+      // 检查成功率
+      final successCount = downloaded.where((d) => d).length;
+      final successRate = successCount / tsUrls.length * 100;
+      
+      if (failedIndices.isNotEmpty) {
+        onLog?.call('有 ${failedIndices.length} 个切片下载失败（$successCount/${tsUrls.length}，成功率 ${successRate.toStringAsFixed(1)}%）', 'warn');
+        
+        if (successRate < 50) {
+          onLog?.call('成功率低于 50%，放弃下载', 'error');
+          await tempDir.delete(recursive: true);
+          return false;
+        }
+        
+        onLog?.call('将跳过失败的切片继续合并', 'warn');
+      }
+      
       // 合并 TS 文件
       onLog?.call('合并文件...', 'info');
-      await _mergeTsFiles(tempDir.path, savePath);
+      await _mergeTsFiles(tempDir.path, savePath, downloaded);
       
       // 清理临时文件
       await tempDir.delete(recursive: true);
@@ -1080,7 +1149,8 @@ class CrawlerCore {
   }
 
   /// 合并 TS 文件
-  Future<void> _mergeTsFiles(String tempDir, String outputPath) async {
+  /// [downloaded] 下载状态列表，用于跳过失败的切片
+  Future<void> _mergeTsFiles(String tempDir, String outputPath, List<bool>? downloaded) async {
     final dir = Directory(tempDir);
     final files = await dir.list().toList();
     
@@ -1090,7 +1160,13 @@ class CrawlerCore {
     final outputFile = File(outputPath);
     final sink = outputFile.openWrite();
     
-    for (var file in files) {
+    for (var i = 0; i < files.length; i++) {
+      final file = files[i];
+      // 如果有下载状态记录，跳过失败的切片
+      if (downloaded != null && i < downloaded.length && !downloaded[i]) {
+        Logger().logSync('Merge', '跳过缺失切片 ${i + 1}');
+        continue;
+      }
       if (file is File) {
         final bytes = await file.readAsBytes();
         sink.add(bytes);
