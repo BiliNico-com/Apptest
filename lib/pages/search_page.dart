@@ -576,9 +576,15 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
             child: Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
+                color: Colors.white.withOpacity(0.95),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -586,7 +592,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                   // 当前页显示
                   Text(
                     '第$_currentPage页',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[800], fontWeight: FontWeight.w500),
                   ),
                   SizedBox(width: 12),
                   // 上一页按钮
@@ -594,10 +600,17 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     onTap: (_isLoading || _isLoadingMore || _currentPage <= 1) 
                       ? null 
                       : () => _goToPage(_currentPage - 1),
-                    child: Icon(
-                      Icons.arrow_left,
-                      size: 20,
-                      color: (_currentPage <= 1) ? Colors.grey[400] : Colors.black,
+                    child: Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: (_currentPage <= 1) ? Colors.grey[300] : Colors.blue[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.arrow_left,
+                        size: 18,
+                        color: (_currentPage <= 1) ? Colors.grey[500] : Colors.blue[700],
+                      ),
                     ),
                   ),
                   SizedBox(width: 8),
@@ -606,17 +619,18 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     width: 60,
                     height: 28,
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                      color: Colors.grey[100],
+                      border: Border.all(color: Colors.grey[400]!),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: TextField(
                       controller: _pageController,
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12),
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
                       decoration: InputDecoration(
-                        hintText: '回车跳转',
-                        hintStyle: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                        hintText: '回车',
+                        hintStyle: TextStyle(fontSize: 10, color: Colors.grey[600]),
                         contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                         border: InputBorder.none,
                         isDense: true,
@@ -636,10 +650,17 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     onTap: (_isLoading || _isLoadingMore) 
                       ? null 
                       : () => _goToPage(_currentPage + 1),
-                    child: Icon(
-                      Icons.arrow_right,
-                      size: 20,
-                      color: Colors.black,
+                    child: Container(
+                      padding: EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.blue[100],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.arrow_right,
+                        size: 18,
+                        color: Colors.blue[700],
+                      ),
                     ),
                   ),
                 ],
