@@ -72,7 +72,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     final crawler = appState.crawler;
     if (crawler == null) return;
     
-    setState(() => _isLoading = true });
+    setState(() => _isLoading = true);
     
     final nextPage = _loadedPage + 1;
     final newVideos = await crawler.getVideoList(_selectedType, nextPage);
