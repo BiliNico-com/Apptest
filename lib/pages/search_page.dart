@@ -24,6 +24,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   
   // 分页相关
   int _currentPage = 1;
+  int _loadedPage = 0;  // 已加载的页码（用于瀑布流加载）
   bool _hasMore = true;
   String _lastKeyword = '';
   String _sortBy = 'default';  // default, new, hot
@@ -92,25 +93,29 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     if (crawler == null) return;
-    
+
     setState(() => _isLoadingMore = true);
-    _currentPage++;
+    final nextPage = _loadedPage + 1;
     
-    final newResults = await crawler.searchVideos(_lastKeyword, page: _currentPage, sort: _sortBy);
+    final newResults = await crawler.searchVideos(_lastKeyword, page: nextPage, sort: _sortBy);
     
     if (newResults.isEmpty) {
-      _hasMore = false;
+      setState(() {
+        _hasMore = false;
+        _isLoadingMore = false;
+      });
     } else {
       setState(() {
         _results.addAll(newResults);
+        _loadedPage = nextPage;
+        _currentPage = nextPage;
         // 如果返回结果少于每页数量，说明没有更多了
         if (newResults.length < 20) {
           _hasMore = false;
         }
+        _isLoadingMore = false;
       });
     }
-    
-    setState(() => _isLoadingMore = false);
   }
 
   /// 加载更多作者视频
@@ -688,6 +693,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     
     setState(() {
       _results = results;
+      _loadedPage = page;  // 更新已加载页码
       _hasMore = results.isNotEmpty;
       _isLoading = false;
     });
@@ -724,6 +730,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       _selectedIds.clear();
       // 重置分页
       _currentPage = 1;
+      _loadedPage = 0;
       _hasMore = true;
       _lastKeyword = _keywordController.text;
       _pageController.text = '1';
@@ -744,6 +751,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       
       setState(() {
         _results = results;
+        _loadedPage = 1;  // 第一次搜索后，已加载第1页
         _selectedIds.clear();  // 默认不全选
         _isLoading = false;
         _status = results.isEmpty ? '无结果' : '就绪';
