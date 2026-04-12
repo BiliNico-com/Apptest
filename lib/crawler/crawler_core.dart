@@ -233,7 +233,7 @@ class CrawlerCore {
         if (idMatch != null) {
           coverId = idMatch.group(1);
           if (coverId != null) {
-            cover = VideoInfo.buildCoverUrl(coverId);
+            cover = VideoInfo.buildCoverUrl(coverId!);
           }
         } else if (imgSrc.startsWith('http')) {
           cover = imgSrc;
@@ -301,15 +301,17 @@ class CrawlerCore {
     Logger().logSync('Parse', '解析 original HTML, 长度: ${html.length}');
     
     // 策略1: 完整容器解析 - 匹配 thumbnail 容器
-    // <div class="thumbnail">
-    //   <a href="video-xxx.htm"><div style="background-image:url('...')" title="标题"></div></a>
-    //   <var class="duration">时长</var>
-    //   <a href="user.htm?author=xxx">作者</a>
+    // <div class="col-xs-6 col-md-3">
+    //   <div class="thumbnail">
+    //     <a>封面</a>
+    //     <div class="caption title">标题</div>
+    //     <div class="info">作者</div>    
+    //   </div>
     // </div>
+    // ✅ 修复：使用前瞻断言，确保匹配到 thumbnail 的真正结束
     final containerPattern = RegExp(
-      r'<div[^>]*class="[^"]*thumbnail[^"]*"[^>]*>(.*?)</div>\s*</div>',
+      r'<div[^>]*class="[^"]*thumbnail[^"]*"[^>]*>([\s\S]*?)</div>\s*(?=</div>)',
       caseSensitive: false,
-      dotAll: true,
     );
     
     for (final containerMatch in containerPattern.allMatches(html)) {
@@ -362,11 +364,14 @@ class CrawlerCore {
         duration = durationMatch.group(1)!.trim();
       }
       
-      // 提取作者 <a href="user.htm?author=xxx">&nbsp;作者</a>
+      // ✅ 修复：提取作者 <a href="user.htm?author=xxx">作者名</a>
+      // ml0987 格式: <p>&nbsp;&nbsp;<a href="...user.htm?author=xxx">&nbsp;作者名</a>
       String? author;
-      final authorMatch = RegExp(r'<a[^>]*href="user\.htm\?author=([^"]+)"[^>]*>(?:&nbsp;)?([^<]+)</a>').firstMatch(container);
+      final authorMatch = RegExp(
+        r'<a[^>]*href="[^"]*user\.htm\?author=([^"]+)"[^>]*>([^<]*)</a>'
+      ).firstMatch(container);
       if (authorMatch != null) {
-        author = authorMatch.group(2)!.trim();
+        author = authorMatch.group(2)?.replaceAll('&nbsp;', '').trim();
       }
       
       // 从封面URL提取封面ID
