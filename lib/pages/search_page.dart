@@ -394,36 +394,39 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: Center(
-        child: Container(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[850] : Colors.white.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 8,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[850] : Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.max,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
               // 搜索框
               SizedBox(
-                width: 160,
+                width: 140,
                 child: TextField(
                   controller: _keywordController,
+                  textAlign: TextAlign.center,
                   decoration: InputDecoration(
                     hintText: '输入关键词...',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                     isDense: false,
-                    hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.grey[500] : Colors.grey[600]),
+                    hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                   ),
-                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                   onSubmitted: (_) => _search(),
                   textInputAction: TextInputAction.search,
                 ),
@@ -431,21 +434,20 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
               // 排序选择（仅视频模式 + original CMS）
               if (showSort) ...[
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   decoration: BoxDecoration(
                     color: isDark ? Colors.grey[800] : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[400]!),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       value: _sortBy,
                       isDense: true,
-                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                      style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87),
                       items: [
-                        DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
-                        DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
-                        DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'default', child: Text('默认', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'new', child: Text('最新', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
+                        DropdownMenuItem(value: 'hot', child: Text('最热', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
                       ],
                       onChanged: (v) {
                         if (v != null && v != _sortBy) {
@@ -458,30 +460,29 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                     ),
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: 4),
               ],
               // 搜索模式选择
               Container(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[800] : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[400]!),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<bool>(
                     value: _isAuthorMode,
                     isDense: true,
-                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                    style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87),
                     items: [
-                      DropdownMenuItem(value: false, child: Text('搜视频', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
-                      DropdownMenuItem(value: true, child: Text('搜作者', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87))),
+                      DropdownMenuItem(value: false, child: Text('搜视频', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
+                      DropdownMenuItem(value: true, child: Text('搜作者', style: TextStyle(fontSize: 10, color: isDark ? Colors.white70 : Colors.black87))),
                     ],
                     onChanged: (v) => setState(() => _isAuthorMode = v!),
                   ),
                 ),
               ),
-              SizedBox(width: 8),
+              SizedBox(width: 4),
               // 搜索按钮
               GestureDetector(
                 onTap: _search,
@@ -498,8 +499,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   /// 底部页码跳转区域（悬浮胶囊）
