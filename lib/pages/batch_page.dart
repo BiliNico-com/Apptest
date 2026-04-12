@@ -656,19 +656,19 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 左侧：展开时显示标题，收起时显示下拉选择器
-                    Expanded(
-                      child: collapseRatio < 0.5
-                          ? Text(
+                    // 左侧：展开时显示标题（占满左侧），收起时显示下拉选择器（紧凑宽度）
+                    collapseRatio < 0.5
+                        ? Expanded(
+                            child: Text(
                               '批量爬取',
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.white,
                               ),
-                            )
-                          : _buildTypeChip(ctx, isDark),
-                    ),
+                            ),
+                          )
+                        : _buildTypeChip(ctx, isDark),
                     // 右侧按钮
                     _buildRightButtons(),
                   ],
