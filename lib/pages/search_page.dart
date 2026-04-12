@@ -907,9 +907,6 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                   ],
                 ),
               ),
-              // 选中标记
-              if (isSelected)
-                Icon(Icons.check_circle, color: Colors.blue),
             ],
           ),
         ),
