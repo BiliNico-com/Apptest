@@ -669,6 +669,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                             ),
                           )
                         : _buildTypeChip(ctx, isDark),
+                    // 收起时加 Spacer 让右侧按钮靠右
+                    if (collapseRatio >= 0.5) const Spacer(),
                     // 右侧按钮
                     _buildRightButtons(),
                   ],
