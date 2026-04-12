@@ -168,16 +168,33 @@ class CrawlerCore {
     final ts = DateTime.now().millisecondsSinceEpoch;
     final urlWithCache = url.contains('?') ? '$url&_t=$ts' : '$url?_t=$ts';
     
-    // ✅ 修复1：日志记录实际请求的 URL
+    // ✅ 修复：日志记录实际请求的 URL
     await logger.log('Crawler', '网络请求: GET $urlWithCache (siteType=$_siteType)');
     
     try {
       String html;
       
-      // ✅ 修复2：porn91 只需一次 GET，语言 Cookie 已在 _initDio 里设好
-      // 不需要 POST，language=cn_CN 通过 Cookie header 传递
-      final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
-      html = resp.data.toString();
+      // ✅ 关键修复：porn91 需要 GET + POST 两步请求
+      // Python版本逻辑：先GET获取初始cookie，再POST提交session_language=cn_CN
+      if (_siteType == "porn91") {
+        // 步骤1：GET 请求获取初始 cookie
+        await logger.log('Crawler', 'porn91: 先 GET 请求获取初始 cookie...');
+        final getResp = await _dio.get(urlWithCache, options: _noCacheOptions);
+        
+        // 步骤2：POST 提交语言设置
+        await logger.log('Crawler', 'porn91: POST 提交语言设置 session_language=cn_CN');
+        final postResp = await _dio.post(
+          urlWithCache,
+          data: {'session_language': 'cn_CN'},
+          options: _noCacheOptions,
+        );
+        html = postResp.data.toString();
+        await logger.log('Crawler', 'porn91: POST 响应长度 ${html.length} 字节');
+      } else {
+        // 其他站点：直接 GET
+        final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
+        html = resp.data.toString();
+      }
       
       // ✅ 调试日志：记录实际收到的 HTML 长度和前500字符
       await logger.log('Crawler', '收到响应: ${html.length} 字节, URL=$urlWithCache');
