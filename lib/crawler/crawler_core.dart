@@ -232,7 +232,9 @@ class CrawlerCore {
             .firstMatch(imgSrc);
         if (idMatch != null) {
           coverId = idMatch.group(1);
-          cover = VideoInfo.buildCoverUrl(coverId);
+          if (coverId != null) {
+            cover = VideoInfo.buildCoverUrl(coverId);
+          }
         } else if (imgSrc.startsWith('http')) {
           cover = imgSrc;
         }
