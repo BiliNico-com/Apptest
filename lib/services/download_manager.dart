@@ -353,7 +353,7 @@ class DownloadManager extends ChangeNotifier {
         t.status == DownloadStatus.downloading
       ).toList();
       
-      final taskList = pendingTasks.map((t) => {
+      final taskList = pendingTasks.map((t) {
         return {
           'id': t.video.id,
           'url': t.video.url,
