@@ -461,8 +461,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
               subtitle: Text('滚动时显示快速回顶部按钮'),
               value: appState.showBackToTop,
               onChanged: (v) {
-                appState.showBackToTop = v;
-                appState.notifyListeners();
+                appState.setShowBackToTop(v);
               },
             ),
             if (appState.showBackToTop)
@@ -476,8 +475,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
                   ],
                   selected: {appState.backToTopPosition},
                   onSelectionChanged: (s) {
-                    appState.backToTopPosition = s.first;
-                    appState.notifyListeners();
+                    appState.setBackToTopPosition(s.first);
                   },
                 ),
               ),
@@ -489,8 +487,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
               subtitle: Text('点击视频时使用系统播放器打开'),
               value: appState.useExternalPlayer,
               onChanged: (v) {
-                appState.useExternalPlayer = v;
-                appState.notifyListeners();
+                appState.setExternalPlayer(v);
               },
             ),
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import '../crawler/crawler_core.dart';
 import '../models/video_info.dart';
@@ -76,10 +77,43 @@ class AppState extends ChangeNotifier {
 
   // 初始化 - 请求权限并设置默认下载目录
   Future<void> init() async {
+    await _loadSettings();  // 先加载保存的设置
     await requestPermissions();
     await initDownloadDir();
     // 恢复未完成的下载任务
     await _downloadManager.restorePendingTasks();
+  }
+
+  // 从持久化存储加载设置
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    currentSite = prefs.getString('currentSite');
+    themeMode = prefs.getInt('themeMode') ?? 1;
+    _isDarkMode = prefs.getBool('isDarkMode') ?? true;
+    videoDisplayMode = prefs.getString('videoDisplayMode') ?? 'grid';
+    showBackToTop = prefs.getBool('showBackToTop') ?? true;
+    backToTopPosition = prefs.getString('backToTopPosition') ?? 'right';
+    useExternalPlayer = prefs.getBool('useExternalPlayer') ?? false;
+    
+    notifyListeners();
+  }
+
+  // 保存设置到持久化存储
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    if (currentSite != null) {
+      await prefs.setString('currentSite', currentSite!);
+    } else {
+      await prefs.remove('currentSite');
+    }
+    await prefs.setInt('themeMode', themeMode);
+    await prefs.setBool('isDarkMode', _isDarkMode);
+    await prefs.setString('videoDisplayMode', videoDisplayMode);
+    await prefs.setBool('showBackToTop', showBackToTop);
+    await prefs.setString('backToTopPosition', backToTopPosition);
+    await prefs.setBool('useExternalPlayer', useExternalPlayer);
   }
 
   // 请求存储权限 - 适配 Android 13+ 的细粒度媒体权限
@@ -175,6 +209,7 @@ class AppState extends ChangeNotifier {
   void changeSite(String site) {
     currentSite = site;
     _crawler?.changeSite(site);
+    _saveSettings();
     notifyListeners();
   }
 
@@ -198,6 +233,7 @@ class AppState extends ChangeNotifier {
       // 跟随系统模式，根据系统主题设置_isDarkMode
       _isDarkMode = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
     }
+    _saveSettings();
     notifyListeners();
   }
   
@@ -205,6 +241,7 @@ class AppState extends ChangeNotifier {
   void setLightMode() {
     themeMode = 0;
     _isDarkMode = false;
+    _saveSettings();
     notifyListeners();
   }
   
@@ -212,12 +249,14 @@ class AppState extends ChangeNotifier {
   void setDarkMode() {
     themeMode = 1;
     _isDarkMode = true;
+    _saveSettings();
     notifyListeners();
   }
   
   // 切换到跟随系统
   void setAutoTheme() {
     themeMode = 2;
+    _saveSettings();
     notifyListeners();
   }
   
@@ -229,6 +268,7 @@ class AppState extends ChangeNotifier {
     } else {
       // 切换日间/夜间
       _isDarkMode = !_isDarkMode;
+      _saveSettings();
       notifyListeners();
     }
   }
@@ -249,18 +289,35 @@ class AppState extends ChangeNotifier {
   // 切换外部播放器
   void toggleExternalPlayer() {
     useExternalPlayer = !useExternalPlayer;
+    _saveSettings();
     notifyListeners();
   }
 
   // 设置外部播放器
   void setExternalPlayer(bool enabled) {
     useExternalPlayer = enabled;
+    _saveSettings();
     notifyListeners();
   }
   
   // 设置视频显示模式
   void setVideoDisplayMode(String mode) {
     videoDisplayMode = mode;
+    _saveSettings();
+    notifyListeners();
+  }
+  
+  // 设置回顶部按钮显示
+  void setShowBackToTop(bool show) {
+    showBackToTop = show;
+    _saveSettings();
+    notifyListeners();
+  }
+  
+  // 设置回顶部按钮位置
+  void setBackToTopPosition(String position) {
+    backToTopPosition = position;
+    _saveSettings();
     notifyListeners();
   }
   
