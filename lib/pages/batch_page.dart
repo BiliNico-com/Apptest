@@ -177,7 +177,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           body: CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // AppBar - 添加毛玻璃效果，标签栏放在bottom实现浮动吸附
+              // AppBar - 只保留标题，滚动时透明
               SliverAppBar(
                 pinned: true,
                 floating: true,
@@ -203,18 +203,13 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                   ],
                 ),
                 actions: _buildAppBarActions(appState),
-                // 标签栏放在bottom实现浮动吸附效果
-                bottom: PreferredSize(
-                  preferredSize: Size.fromHeight(56),
-                  child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                      child: Container(
-                        color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.9),
-                        child: _buildSettingsBar(appState),
-                      ),
-                    ),
-                  ),
+              ),
+              // 标签栏 - 浮动吸附效果，可滑入AppBar区域
+              SliverPersistentHeader(
+                pinned: true,
+                floating: true,
+                delegate: _FloatingSettingsBarDelegate(
+                  child: _buildSettingsBar(appState),
                 ),
               ),
               // 视频列表 - 使用 SliverFillRemaining 替代 SliverToBoxAdapter + SizedBox
@@ -910,23 +905,47 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   }
 }
 
-/// 吸顶列表选择栏的 Header Delegate
-class _StickySettingsDelegate extends SliverPersistentHeaderDelegate {
+/// 浮动吸附标签栏的 Header Delegate
+class _FloatingSettingsBarDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
+  static const double _tabBarHeight = 56.0;
+  static const double _appBarHeight = 56.0;
 
-  _StickySettingsDelegate({required this.child});
+  _FloatingSettingsBarDelegate({required this.child});
 
   @override
-  double get minExtent => 56.0;
+  double get minExtent => _tabBarHeight;
 
   @override
-  double get maxExtent => 56.0;
+  double get maxExtent => _tabBarHeight + _appBarHeight; // 额外空间让标签栏能滑入AppBar区域
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
+    // 计算标签栏位置：滚动时向上移动，最终吸附到顶部
+    final scrollProgress = (shrinkOffset / _appBarHeight).clamp(0.0, 1.0);
+    final topOffset = _appBarHeight * (1 - scrollProgress);
+    
+    return Stack(
+      children: [
+        Positioned(
+          top: topOffset,
+          left: 0,
+          right: 0,
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(
+                height: _tabBarHeight,
+                color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+                child: child,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
-  bool shouldRebuild(_StickySettingsDelegate oldDelegate) => child != oldDelegate.child;
+  bool shouldRebuild(_FloatingSettingsBarDelegate oldDelegate) => child != oldDelegate.child;
 }
