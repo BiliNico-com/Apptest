@@ -185,13 +185,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     pinned: true,
                     floating: true,
                     snap: false,
-                    expandedHeight: 112, // AppBar(56) + 标签栏(56)
+                    expandedHeight: 112 + MediaQuery.of(context).padding.top, // 状态栏 + AppBar(56) + 标签栏(56)
                     backgroundColor: Colors.transparent,
                     elevation: 0,
                     scrolledUnderElevation: 0,
                     flexibleSpace: LayoutBuilder(
                       builder: (context, constraints) {
-                        final expandRatio = ((constraints.maxHeight - 56) / 56).clamp(0.0, 1.0);
+                        final statusBarHeight = MediaQuery.of(context).padding.top;
+                        final expandRatio = ((constraints.maxHeight - 56 - statusBarHeight) / 56).clamp(0.0, 1.0);
                         final isExpanded = expandRatio > 0.5;
                     
                     return ClipRect(
@@ -202,6 +203,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              // 状态栏占位
+                              SizedBox(height: statusBarHeight),
                               // 标题区域（滚动时隐藏）
                               AnimatedOpacity(
                                 opacity: isExpanded ? 1.0 : 0.0,

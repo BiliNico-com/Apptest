@@ -207,7 +207,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         return true;  // 正常返回
       },
       child: Scaffold(
-        extendBodyBehindAppBar: true,  // 让内容延伸到AppBar下方
+        extendBodyBehindAppBar: false,  // 不延伸到AppBar下方，让系统处理状态栏
         appBar: AppBar(
           backgroundColor: Colors.transparent,  // 透明背景
           elevation: 0,
