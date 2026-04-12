@@ -16,8 +16,7 @@ class BatchPage extends StatefulWidget {
 class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixin {
   String _selectedType = 'list';
   int _currentPage = 1;  // 当前输入的页码
-  int _loadedPage = 0;   // 已加载的页码（用于判断是否还有更多）
-  bool _hasMore = true;  // 是否还有更多
+  int _loadedPage = 0;   // 已加载的页码
   List<VideoInfo> _videos = [];
   Set<String> _selectedIds = {};
   bool _isLoading = false;
@@ -56,47 +55,13 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       setState(() => _showBackToTop = showBtn);
     }
     
-    // 自动加载更多（仅在滚动到接近底部时触发）
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && _hasMore && _videos.isNotEmpty) {
-        _loadMore();
-      }
-    }
+    // 批量页不自动加载，通过翻页控件跳转
   }
   
   void _scrollToTop() {
     _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
   }
   
-  /// 加载更多（下一页）
-  Future<void> _loadMore() async {
-    if (!_hasMore || _isLoading) return;
-    
-    final appState = context.read<AppState>();
-    final crawler = appState.crawler;
-    if (crawler == null) return;
-    
-    setState(() => _isLoading = true);
-    
-    _loadedPage++;
-    
-    final newVideos = await crawler.getVideoList(_selectedType, _loadedPage);
-    
-    if (newVideos.isEmpty) {
-      _hasMore = false;
-    } else {
-      setState(() {
-        _videos.addAll(newVideos);
-        _totalVideos = _videos.length;
-        // 如果返回结果少于每页数量，说明没有更多了
-        if (newVideos.length < 24) {
-          _hasMore = false;
-        }
-      });
-    }
-    
-    setState(() => _isLoading = false);
-  }
   
   // porn91 站点的列表类型（完整12个分类）
   static const _typeNamesPorn91 = {
@@ -379,9 +344,10 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         _videos.clear();
                         _selectedIds.clear();
                         _loadedPage = 0;
-                        _hasMore = true;
                       });
-                      await _loadMore();
+                      // 加载第一页
+                      _pageController.text = '1';
+                      await _goToPage();
                     }
                   },
                 ),
@@ -517,7 +483,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       _currentPage = targetPage;
       _isLoading = false;
       _status = videos.isEmpty ? '无结果' : '就绪';
-      _hasMore = videos.length >= 24;  // 假设每页24个
     });
     
     // 滚动到顶部
@@ -540,8 +505,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   /// 视频列表内容（包含视频网格和悬浮按钮）
   Widget _buildVideoListContent(AppState appState) {
     return Stack(
+      fit: StackFit.expand,
       children: [
-        _buildVideoGrid(),
+        // 视频网格（填充整个空间）
+        Positioned.fill(
+          child: _buildVideoGrid(),
+        ),
         // 页码跳转悬浮胶囊
         _buildBottomPageNavigation(),
         // 回顶部按钮
