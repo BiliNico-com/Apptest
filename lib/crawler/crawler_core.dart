@@ -475,7 +475,10 @@ class CrawlerCore {
     await logger.log('Crawler', '网络请求: 搜索视频 $url (siteType=$_siteType)');
     
     try {
-      final resp = await _dio.get(url);
+      // 添加时间戳参数避免CDN缓存
+      final cacheBuster = '_t=${DateTime.now().millisecondsSinceEpoch}';
+      final urlWithCache = url.contains('?') ? '$url&$cacheBuster' : '$url?$cacheBuster';
+      final resp = await _dio.get(urlWithCache);
       final html = resp.data.toString();
       
       // 根据站点类型选择解析方法
@@ -508,7 +511,10 @@ class CrawlerCore {
     await logger.log('Crawler', '网络请求: 搜索作者 $url');
     
     try {
-      final resp = await _dio.get(url);
+      // 添加时间戳参数避免CDN缓存
+      final cacheBuster = '_t=${DateTime.now().millisecondsSinceEpoch}';
+      final urlWithCache = url.contains('?') ? '$url&$cacheBuster' : '$url?$cacheBuster';
+      final resp = await _dio.get(urlWithCache);
       final html = resp.data.toString();
       
       final authors = <AuthorInfo>[];
@@ -582,8 +588,13 @@ class CrawlerCore {
   /// 获取视频详情（m3u8地址等）
   Future<VideoInfo?> getVideoDetail(VideoInfo video) async {
     try {
+      // 添加时间戳参数避免CDN缓存
+      final cacheBuster = '_t=${DateTime.now().millisecondsSinceEpoch}';
+      final urlWithCache = video.url.contains('?') 
+          ? '${video.url}&$cacheBuster' 
+          : '${video.url}?$cacheBuster';
       
-      final resp = await _dio.get(video.url);
+      final resp = await _dio.get(urlWithCache);
       final html = resp.data.toString();
       
       String? videoUrl;
