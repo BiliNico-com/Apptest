@@ -637,6 +637,21 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext ctx, double shrinkOffset, bool overlapsContent) {
+    final screenWidth = MediaQuery.of(ctx).size.width;
+    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    
+    // 计算列表选择器的位置
+    // 展开时 (collapseRatio=0)：居中显示
+    // 收起时 (collapseRatio=1)：左上角
+    final chipWidth = 140.0; // 估算选择器宽度
+    final chipLeftExpanded = (screenWidth - chipWidth) / 2; // 居中
+    final chipLeftCollapsed = 16.0; // 左上角
+    final chipLeft = chipLeftExpanded + (chipLeftCollapsed - chipLeftExpanded) * collapseRatio;
+    
+    final chipTopExpanded = 80.0;  // 展开时：中间偏上
+    final chipTopCollapsed = 12.0; // 收起时：顶部
+    final chipTop = chipTopExpanded + (chipTopCollapsed - chipTopExpanded) * collapseRatio;
+    
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -645,134 +660,117 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
           child: Column(
             children: [
               SizedBox(height: statusBarHeight),
-
-              // ── 滑动动画区域 ──
-              // 列表选择器从展开位置（居中/下方）滑动到收起位置（左上角）
-              SizedBox(
-                height: expandedHeight - collapsedHeight + collapsedHeight,
+              
+              // ── 主内容区 ──
+              Expanded(
                 child: Stack(
                   children: [
-                    // ── 标题：展开时显示，收起时淡出 + 上移消失 ──
-                    Positioned(
-                      left: 16,
-                      top: 4 + 20 * (1 - collapseRatio), // 展开时偏下，收起时上移
-                      child: Opacity(
-                        opacity: 1.0 - collapseRatio,
-                        child: Text(
-                          '批量爬取',
-                          style: TextStyle(
-                            fontSize: 18 + 2 * (1 - collapseRatio), // 展开时略大
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // ── 副标题：展开时显示，收起时淡出 ──
-                    Positioned(
-                      left: 16,
-                      top: 32 + 20 * (1 - collapseRatio),
-                      child: Opacity(
-                        opacity: 1.0 - collapseRatio,
-                        child: Text(
-                          '已加载 $videoCount 个视频',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                      ),
-                    ),
-
-                    // ── 列表选择器：关键！从展开位置滑动到左上角 ──
-                    // 展开时：位于标题下方居中
-                    // 收起时：位于左上角
-                    AnimatedPositioned(
-                      duration: Duration.zero, // 跟随滚动实时更新
-                      left: 16 + (1 - collapseRatio) * 0,           // 水平位置：始终靠左
-                      top: 60 + (1 - collapseRatio) * 24,           // 垂直位置：从下方向上滑
-                      child: AnimatedContainer(
-                        duration: Duration.zero,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 12 + (1 - collapseRatio) * 0,
-                          vertical: 7 + (1 - collapseRatio) * 0,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(ctx).brightness == Brightness.dark
-                              ? const Color(0xFF252525)
-                              : Colors.white.withOpacity(0.95),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Theme.of(ctx).brightness == Brightness.dark
-                                ? const Color(0xFF333333)
-                                : Colors.grey[300]!,
-                            width: 0.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF4a9eff).withOpacity(0.1),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.list_alt, size: 18, color: const Color(0xFF4a9eff)),
-                            const SizedBox(width: 8),
-                            Text(
-                              '列表: ${typeNames[selectedType] ?? selectedType}',
+                    // ── 标题和副标题：展开时显示，收起时淡出 ──
+                    Opacity(
+                      opacity: 1.0 - collapseRatio,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              '批量爬取',
                               style: TextStyle(
-                                fontSize: 13,
-                                color: Theme.of(ctx).brightness == Brightness.dark
-                                    ? Colors.white
-                                    : Colors.black87,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(width: 4),
-                            Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey[600]),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              '已加载 $videoCount 个视频',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-
-                    // ── 右侧按钮：展开时显示，收起时淡出 ──
+                    
+                    // ── 列表选择器：从居中滑动到左上角 ──
                     Positioned(
-                      right: 16,
-                      top: 8 + (1 - collapseRatio) * 24,
-                      child: Opacity(
-                        opacity: 1.0 - collapseRatio,
+                      left: chipLeft,
+                      top: chipTop,
+                      child: _buildTypeChip(ctx, isDark),
+                    ),
+                    
+                    // ── 底部按钮：始终可见 ──
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 12,
+                      child: Center(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // 全选
-                            GestureDetector(
-                              onTap: onSelectAll,
-                              child: Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.all(6),
+                            // 已选数量
+                            if (selectedCount > 0)
+                              Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: selectedCount == totalCount
-                                      ? Colors.blue
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: selectedCount == totalCount
-                                      ? null
-                                      : Border.all(color: Colors.blue, width: 2),
+                                  color: Colors.blue.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Icon(
-                                  Icons.check,
-                                  color: selectedCount == totalCount
-                                      ? Colors.white
-                                      : Colors.blue,
-                                  size: 18,
+                                child: Text(
+                                  '已选 $selectedCount 个',
+                                  style: const TextStyle(color: Colors.blue, fontSize: 12),
+                                ),
+                              ),
+                            
+                            // 全选按钮
+                            if (selectedCount > 0)
+                              GestureDetector(
+                                onTap: onSelectAll,
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: selectedCount == totalCount
+                                        ? Colors.blue
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: selectedCount == totalCount
+                                        ? null
+                                        : Border.all(color: Colors.blue, width: 2),
+                                  ),
+                                  child: Icon(
+                                    Icons.check,
+                                    color: selectedCount == totalCount
+                                        ? Colors.white
+                                        : Colors.blue,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            
+                            // 就绪标签
+                            Container(
+                              margin: const EdgeInsets.only(right: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: status == '就绪'
+                                    ? Colors.green.withOpacity(0.2)
+                                    : Colors.orange.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                status,
+                                style: TextStyle(
+                                  color: status == '就绪' ? Colors.green : Colors.orange,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
+                            
                             // 隐私按钮
                             IconButton(
                               icon: Icon(
@@ -781,8 +779,6 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                               ),
                               onPressed: onPrivacyToggle,
                               tooltip: privacyMode ? '取消模糊' : '模糊预览图',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
                             ),
                           ],
                         ),
@@ -794,6 +790,59 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
             ],
           ),
         ),
+      ),
+    );
+  }
+  
+  // 列表选择器组件 - 支持下拉点击
+  Widget _buildTypeChip(BuildContext ctx, bool isDark) {
+    final dropdownBg = isDark ? const Color(0xFF252525) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF252525) : Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? const Color(0xFF333333) : Colors.grey[300]!,
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4a9eff).withOpacity(0.1),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.list_alt, size: 16, color: const Color(0xFF4a9eff)),
+          const SizedBox(width: 6),
+          Theme(
+            data: Theme.of(ctx).copyWith(canvasColor: dropdownBg),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: selectedType,
+                isDense: true,
+                icon: Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 12, color: textColor),
+                items: typeNames.entries.map((e) => DropdownMenuItem(
+                  value: e.key,
+                  child: Text(e.value, style: TextStyle(fontSize: 12, color: isDark ? Colors.grey[300] : Colors.black87)),
+                )).toList(),
+                onChanged: onTypeChanged,
+                underline: const SizedBox(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
