@@ -411,17 +411,17 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
             children: [
               // 搜索框
               SizedBox(
-                width: 140,
+                width: 160,
                 child: TextField(
                   controller: _keywordController,
                   decoration: InputDecoration(
                     hintText: '输入关键词...',
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                    isDense: true,
-                    hintStyle: TextStyle(fontSize: 12, color: isDark ? Colors.grey[500] : Colors.grey[600]),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    isDense: false,
+                    hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                   ),
-                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
                   onSubmitted: (_) => _search(),
                   textInputAction: TextInputAction.search,
                 ),
