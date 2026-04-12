@@ -131,9 +131,27 @@ class CrawlerCore {
     await logger.log('Crawler', '网络请求: GET $url (siteType=$_siteType)');
     
     try {
-      final resp = await _dio.get(url);
+      String html;
       
-      final html = resp.data.toString();
+      if (_siteType == "porn91") {
+        // porn91 需要先 GET 获取 cookie，然后 POST 提交语言设置
+        // Step 1: GET 请求获取初始 cookie
+        final getResp = await _dio.get(url);
+        
+        // Step 2: POST 请求提交语言设置
+        final postResp = await _dio.post(
+          url,
+          data: {'session_language': 'cn_CN'},
+          options: Options(
+            contentType: Headers.formUrlEncodedContentType,
+          ),
+        );
+        html = postResp.data.toString();
+      } else {
+        // original CMS 直接 GET
+        final resp = await _dio.get(url);
+        html = resp.data.toString();
+      }
       
       // 根据站点类型选择解析方法
       List<VideoInfo> videos;
