@@ -1,7 +1,6 @@
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:local_auth_android/local_auth_android.dart';
-import 'package:local_auth_darwin/local_auth_darwin.dart';
 
 /// 生物识别认证服务
 class AuthService {
@@ -45,24 +44,15 @@ class AuthService {
   /// 返回 true 表示认证成功
   Future<bool> authenticate() async {
     try {
+      // 根据平台设置不同的提示信息
+      String cancelButton = '取消';
+      String goToSettingsButton = '去设置';
+      String goToSettingsDescription = Platform.isIOS 
+          ? '请在设置中开启面容ID或触控ID' 
+          : '请在设置中开启生物识别';
+      
       final didAuthenticate = await _localAuth.authenticate(
         localizedReason: '请验证身份以继续使用应用',
-        authMessages: const [
-          AndroidAuthMessages(
-            signInTitle: '验证身份',
-            cancelButton: '取消',
-            biometricHint: '请验证指纹或面容',
-            biometricNotRecognized: '识别失败，请重试',
-            biometricRequiredTitle: '需要生物识别',
-            goToSettingsButton: '去设置',
-            goToSettingsDescription: '请在设置中开启生物识别',
-          ),
-          IOSAuthMessages(
-            cancelButton: '取消',
-            goToSettingsButton: '去设置',
-            goToSettingsDescription: '请在设置中开启面容ID或触控ID',
-          ),
-        ],
         options: const AuthenticationOptions(
           stickyAuth: true,
           biometricOnly: true,  // 只允许生物识别，不允许PIN码

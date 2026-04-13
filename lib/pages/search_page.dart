@@ -90,15 +90,27 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   /// 加载更多（下一页）
   /// 下拉刷新（只在顶部时触发）
   Future<void> _onRefresh() async {
-    if (_searchQuery.isEmpty) return;
+    if (_lastKeyword.isEmpty) return;
+    
+    final appState = context.read<AppState>();
+    final crawler = appState.crawler;
+    if (crawler == null) return;
     
     // 重新搜索
     setState(() {
-      _searchResults.clear();
-      _currentPage = 1;
+      _results.clear();
+      _loadedPage = 0;
       _hasMore = true;
     });
-    await _performSearch(_searchQuery);
+    
+    final results = await crawler.searchVideos(_lastKeyword, page: 1, sort: _sortBy);
+    if (mounted) {
+      setState(() {
+        _results = results;
+        _loadedPage = 1;
+        _hasMore = results.isNotEmpty;
+      });
+    }
   }
   
   Future<void> _loadMore() async {
