@@ -1,56 +1,54 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// PIN码输入类型
-enum PinInputType {
-  setNew,      // 设置新PIN
-  confirmPin,  // 确认PIN
-  verify,      // 验证PIN
-}
-
-/// PIN码输入对话框
+/// PIN码输入对话框（固定4位）
 class PinInputDialog extends StatefulWidget {
   final String title;
   final String? subtitle;
-  final PinInputType inputType;
-  final String? confirmValue;  // 用于确认PIN时的原始值
-  
+
   const PinInputDialog({
     super.key,
     required this.title,
     this.subtitle,
-    required this.inputType,
-    this.confirmValue,
   });
 
-  /// 显示设置新PIN的对话框
-  static Future<String?> showSetNewPin(BuildContext context) {
-    return showDialog<String>(
+  /// 显示设置PIN对话框（包含输入和确认两步）
+  static Future<String?> showSetPin(BuildContext context) async {
+    // 第一步：输入PIN
+    final pin1 = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (context) => PinInputDialog(
         title: '设置PIN码',
-        subtitle: '请输入4-6位数字PIN码',
-        inputType: PinInputType.setNew,
+        subtitle: '请输入4位数字',
       ),
     );
-  }
-  
-  /// 显示确认PIN的对话框
-  static Future<String?> showConfirmPin(BuildContext context, String originalPin) {
-    return showDialog<String>(
+    
+    if (pin1 == null || !context.mounted) return null;
+    
+    // 第二步：确认PIN
+    final pin2 = await showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (context) => PinInputDialog(
         title: '确认PIN码',
-        subtitle: '请再次输入PIN码确认',
-        inputType: PinInputType.confirmPin,
-        confirmValue: originalPin,
+        subtitle: '请再次输入',
       ),
     );
+    
+    if (pin2 == null || !context.mounted) return null;
+    
+    if (pin1 != pin2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('两次输入不一致，请重试')),
+      );
+      return null;
+    }
+    
+    return pin1;
   }
-  
-  /// 显示验证PIN的对话框
+
+  /// 显示验证PIN对话框
   static Future<String?> showVerifyPin(BuildContext context) {
     return showDialog<String>(
       context: context,
@@ -58,7 +56,6 @@ class PinInputDialog extends StatefulWidget {
       builder: (context) => PinInputDialog(
         title: '输入PIN码',
         subtitle: '请输入PIN码解锁',
-        inputType: PinInputType.verify,
       ),
     );
   }
@@ -69,118 +66,93 @@ class PinInputDialog extends StatefulWidget {
 
 class _PinInputDialogState extends State<PinInputDialog> {
   String _pin = '';
-  String? _error;
-  bool _isLoading = false;
   
-  static const int _minLength = 4;
-  static const int _maxLength = 6;
-  
+  static const int _pinLength = 4;  // 固定4位
+
   void _onNumberPressed(String number) {
-    if (_pin.length < _maxLength) {
+    if (_pin.length < _pinLength) {
       HapticFeedback.lightImpact();
       setState(() {
         _pin += number;
-        _error = null;
       });
       
-      // 自动提交
-      if (_pin.length >= _minLength && widget.inputType != PinInputType.confirmPin) {
-        _submitPin();
-      } else if (widget.inputType == PinInputType.confirmPin && 
-                 _pin.length == widget.confirmValue?.length) {
-        _submitPin();
+      // 输入完成自动提交
+      if (_pin.length == _pinLength) {
+        Future.delayed(const Duration(milliseconds: 150), () {
+          Navigator.of(context).pop(_pin);
+        });
       }
     }
   }
-  
+
   void _onDeletePressed() {
     if (_pin.isNotEmpty) {
       HapticFeedback.lightImpact();
       setState(() {
         _pin = _pin.substring(0, _pin.length - 1);
-        _error = null;
       });
     }
   }
-  
-  void _onClearPressed() {
-    HapticFeedback.lightImpact();
-    setState(() {
-      _pin = '';
-      _error = null;
-    });
-  }
-  
-  void _submitPin() {
-    if (_pin.length < _minLength) {
-      setState(() {
-        _error = 'PIN码至少$_minLength位';
-      });
-      return;
-    }
-    
-    if (widget.inputType == PinInputType.confirmPin) {
-      if (_pin != widget.confirmValue) {
-        HapticFeedback.heavyImpact();
-        setState(() {
-          _error = '两次输入的PIN码不一致';
-          _pin = '';
-        });
-        return;
-      }
-    }
-    
-    Navigator.of(context).pop(_pin);
-  }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // 图标
+            Icon(
+              Icons.lock_outline,
+              size: 48,
+              color: isDark ? Colors.white70 : Colors.black54,
+            ),
+            const SizedBox(height: 16),
+            
             // 标题
             Text(
               widget.title,
-              style: theme.textTheme.titleLarge?.copyWith(
+              style: TextStyle(
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
               ),
             ),
-            const SizedBox(height: 8),
             
-            // 副标题
-            Text(
-              widget.subtitle ?? '',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.grey,
+            if (widget.subtitle != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                widget.subtitle!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white54 : Colors.black54,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
+            ],
             
-            // PIN显示
+            const SizedBox(height: 32),
+            
+            // PIN码显示点（固定4个）
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(_maxLength, (index) {
-                final isFilled = index < _pin.length;
+              children: List.generate(_pinLength, (index) {
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isFilled 
-                        ? theme.colorScheme.primary 
-                        : Colors.grey.withOpacity(0.3),
+                    color: index < _pin.length
+                        ? (isDark ? Colors.white : Colors.black)
+                        : Colors.transparent,
                     border: Border.all(
-                      color: _error != null 
-                          ? Colors.red 
-                          : (isFilled ? theme.colorScheme.primary : Colors.grey),
+                      color: isDark ? Colors.white54 : Colors.black26,
                       width: 2,
                     ),
                   ),
@@ -188,38 +160,20 @@ class _PinInputDialogState extends State<PinInputDialog> {
               }),
             ),
             
-            // 错误信息
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.red, fontSize: 13),
-              ),
-            ],
-            
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             
             // 数字键盘
-            _buildNumberPad(theme),
-            
-            const SizedBox(height: 16),
-            
-            // 按钮
-            Row(
+            GridView.count(
+              shrinkWrap: true,
+              crossAxisCount: 3,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.5,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(null),
-                    child: const Text('取消'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _pin.length >= _minLength ? _submitPin : null,
-                    child: const Text('确认'),
-                  ),
-                ),
+                ...List.generate(9, (index) => _buildKeyButton('${index + 1}')),
+                _buildKeyButton('', isBlank: true),  // 空白
+                _buildKeyButton('0'),
+                _buildKeyButton('⌫', isBackspace: true),
               ],
             ),
           ],
@@ -227,98 +181,32 @@ class _PinInputDialogState extends State<PinInputDialog> {
       ),
     );
   }
-  
-  Widget _buildNumberPad(ThemeData theme) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNumberButton('1', theme),
-            _buildNumberButton('2', theme),
-            _buildNumberButton('3', theme),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNumberButton('4', theme),
-            _buildNumberButton('5', theme),
-            _buildNumberButton('6', theme),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNumberButton('7', theme),
-            _buildNumberButton('8', theme),
-            _buildNumberButton('9', theme),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildActionButton(
-              icon: Icons.clear_all,
-              onPressed: _onClearPressed,
-              color: Colors.orange,
-            ),
-            _buildNumberButton('0', theme),
-            _buildActionButton(
-              icon: Icons.backspace_outlined,
-              onPressed: _onDeletePressed,
-              color: Colors.grey,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildNumberButton(String number, ThemeData theme) {
+
+  Widget _buildKeyButton(String label, {bool isBlank = false, bool isBackspace = false}) {
+    final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    return Material(
-      color: isDark ? Colors.grey[800] : Colors.grey[200],
+    
+    if (isBlank) {
+      return const SizedBox();
+    }
+    
+    return InkWell(
+      onTap: isBackspace ? _onDeletePressed : () => _onNumberPressed(label),
       borderRadius: BorderRadius.circular(40),
-      child: InkWell(
-        onTap: () => _onNumberPressed(number),
-        borderRadius: BorderRadius.circular(40),
-        child: Container(
-          width: 64,
-          height: 64,
-          alignment: Alignment.center,
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[800] : Colors.grey[200],
+          borderRadius: BorderRadius.circular(40),
+        ),
+        child: Center(
           child: Text(
-            number,
+            label,
             style: TextStyle(
               fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildActionButton({
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(40),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(40),
-        child: Container(
-          width: 64,
-          height: 64,
-          alignment: Alignment.center,
-          child: Icon(icon, size: 28, color: color),
         ),
       ),
     );

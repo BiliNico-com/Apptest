@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/app_state.dart';
-import '../services/auth_service.dart';
+
 import '../services/pin_service.dart';
 import '../crawler/config.dart';
 import '../utils/logger.dart';
@@ -18,9 +18,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
-  final AuthService _authService = AuthService();
   final PinService _pinService = PinService();
-  bool _biometricSupported = false;
   
   @override
   bool get wantKeepAlive => true;  // 保持状态
@@ -28,19 +26,12 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   @override
   void initState() {
     super.initState();
-    _checkBiometricSupport();
     Future.microtask(() {
       context.read<AppState>().init();
     });
   }
   
-  Future<void> _checkBiometricSupport() async {
-    final supported = await _authService.isDeviceSupported();
-    if (mounted) {
-      setState(() {
-        _biometricSupported = supported;
-      });
-    }
+
   }
   
   @override
@@ -580,79 +571,38 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   
   String _getAppLockSubtitle(AppState appState) {
     if (!appState.appLockEnabled) {
-      return _biometricSupported ? '支持指纹/面容解锁' : '支持PIN码解锁';
+      return '进入应用时需要输入PIN码';
     }
-    return _biometricSupported ? '已启用指纹/面容解锁' : '已启用PIN码解锁';
+    return '已启用PIN码解锁';
   }
   
   Future<void> _onAppLockToggle(AppState appState, bool enable) async {
     if (enable) {
-      // 开启应用锁 - 弹出选择对话框
-      final choice = await showDialog<String>(
-        context: context,
-        builder: (context) => _AppLockChoiceDialog(
-          biometricSupported: _biometricSupported,
-        ),
-      );
+      // 设置新PIN码
+      final pin = await PinInputDialog.showSetPin(context);
+      if (pin == null || !mounted) return;
       
-      if (choice == null || !mounted) return;
-      
-      if (choice == 'biometric') {
-        // 使用生物识别
-        final success = await _authService.authenticate();
-        if (success && mounted) {
-          await appState.toggleAppLock(true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('已启用应用锁（生物识别）')),
-          );
-        } else if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('生物识别验证失败')),
-          );
-        }
-      } else if (choice == 'pin') {
-        // 使用PIN码
-        final pin = await PinInputDialog.showSetNewPin(context);
-        if (pin == null || !mounted) return;
-        
-        // 确认PIN码
-        final confirmPin = await PinInputDialog.showConfirmPin(context, pin);
-        if (confirmPin == null || !mounted) return;
-        
-        // 保存PIN码
-        final success = await _pinService.setPin(pin);
-        if (success && mounted) {
-          await appState.toggleAppLock(true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('已启用应用锁（PIN码）')),
-          );
-        }
+      final success = await _pinService.setPin(pin);
+      if (success && mounted) {
+        await appState.toggleAppLock(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已启用应用锁')),
+        );
       }
     } else {
-      // 关闭应用锁
-      // 先验证身份
-      if (_biometricSupported) {
-        final success = await _authService.authenticate();
-        if (!success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('身份验证失败')),
-          );
-          return;
-        }
-      } else {
-        // 使用PIN码验证
-        final pin = await PinInputDialog.showVerifyPin(context);
-        if (pin == null || !mounted) return;
-        
-        final success = await _pinService.verifyPin(pin);
-        if (!success && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('PIN码错误')),
-          );
-          return;
-        }
+      // 关闭应用锁 - 先验证PIN码
+      final pin = await PinInputDialog.showVerifyPin(context);
+      if (pin == null || !mounted) return;
+      
+      final success = await _pinService.verifyPin(pin);
+      if (!success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PIN码错误')),
+        );
+        return;
       }
       
+      await _pinService.removePin();
       await appState.toggleAppLock(false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -983,44 +933,6 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
 }
 
 /// 应用锁选择对话框
-class _AppLockChoiceDialog extends StatelessWidget {
-  final bool biometricSupported;
-  
-  const _AppLockChoiceDialog({required this.biometricSupported});
-  
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text('选择解锁方式'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (biometricSupported) ...[
-            ListTile(
-              leading: Icon(Icons.fingerprint, color: Colors.blue),
-              title: Text('生物识别'),
-              subtitle: Text('使用指纹或面容解锁'),
-              onTap: () => Navigator.pop(context, 'biometric'),
-            ),
-            Divider(),
-          ],
-          ListTile(
-            leading: Icon(Icons.pin, color: Colors.orange),
-            title: Text('PIN码'),
-            subtitle: Text('使用数字密码解锁'),
-            onTap: () => Navigator.pop(context, 'pin'),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text('取消'),
-        ),
-      ],
-    );
-  }
-}
 
 /// 日志管理对话框
 class _LogManagerDialog extends StatefulWidget {
