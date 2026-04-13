@@ -113,12 +113,8 @@ class CrawlerCore {
     final domain = uri.host;
     
     // 设置 language=cn_CN（注意：正确名称是 language，不是 session_language）
+    // Cookie值只包含名值对，domain和path是属性，不属于值的一部分
     _dio.options.headers['Cookie'] = 'language=cn_CN';
-    
-    // 如果是 91porn.com，需要额外设置
-    if (domain.contains('91porn.com')) {
-      _dio.options.headers['Cookie'] = 'language=cn_CN; domain=.91porn.com; path=/';
-    }
     
     Logger().logSync('Crawler', '设置语言 Cookie: language=cn_CN (domain=$domain)');
   }
@@ -191,15 +187,19 @@ class CrawlerCore {
         await logger.log('Crawler', 'porn91: 先 GET 请求获取初始 cookie...');
         final getResp = await _dio.get(urlWithCache, options: _noCacheOptions);
         
-        // 从GET响应中提取Set-Cookie
-        final setCookies = getResp.headers['set-cookie'];
-        String? cookies = _dio.options.headers['Cookie'] ?? 'language=cn_CN';
-        if (setCookies != null) {
+        // 从GET响应中提取Set-Cookie（Dio的headers key是小写的）
+        final setCookies = getResp.headers['set-cookie'] ?? getResp.headers['Set-Cookie'];
+        String cookies = _dio.options.headers['Cookie']?.toString() ?? 'language=cn_CN';
+        if (setCookies != null && setCookies.isNotEmpty) {
           for (final cookie in setCookies) {
             // 提取cookie名值对（去掉domain、path等属性）
             final match = RegExp(r'^([^=]+=[^;]+)').firstMatch(cookie);
             if (match != null) {
-              cookies += '; ${match.group(1)}';
+              final cookieValue = match.group(1)!;
+              // 避免重复添加相同的cookie
+              if (!cookies.contains(cookieValue.split('=')[0] + '=')) {
+                cookies += '; $cookieValue';
+              }
             }
           }
           await logger.log('Crawler', 'porn91: 提取到 cookies: $cookies');
@@ -207,7 +207,10 @@ class CrawlerCore {
         
         // 步骤2：POST 提交语言设置
         // 注意：必须使用 x-www-form-urlencoded 格式，不能用 JSON
+        // 重要：添加Referer头，模拟浏览器行为
         await logger.log('Crawler', 'porn91: POST 提交语言设置 session_language=cn_CN');
+        await logger.log('Crawler', 'porn91: POST URL=$urlWithCache');
+        await logger.log('Crawler', 'porn91: POST Cookies=$cookies');
         final postResp = await _dio.post(
           urlWithCache,
           data: 'session_language=cn_CN',  // 使用字符串格式，Dio会自动设置 Content-Type: application/x-www-form-urlencoded
@@ -215,6 +218,8 @@ class CrawlerCore {
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
               'Cookie': cookies,  // 携带GET请求获取的cookie
+              'Referer': urlWithCache,  // 添加Referer，模拟浏览器
+              'Origin': baseUrl,  // 添加Origin
               'Cache-Control': 'no-cache, no-store, must-revalidate',
               'Pragma': 'no-cache',
             },
@@ -223,6 +228,11 @@ class CrawlerCore {
         );
         html = postResp.data.toString();
         await logger.log('Crawler', 'porn91: POST 响应长度 ${html.length} 字节');
+        // 检查响应中的分类信息
+        final categoryMatch = RegExp(r'category=([a-z]+)').firstMatch(html);
+        if (categoryMatch != null) {
+          await logger.log('Crawler', 'porn91: 响应中的分类=${categoryMatch.group(1)}');
+        }
       } else {
         // 其他站点：直接 GET
         final resp = await _dio.get(urlWithCache, options: _noCacheOptions);
