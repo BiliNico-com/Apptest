@@ -87,10 +87,13 @@ class CrawlerCore {
   );
 
   void _initDio() {
+    // 使用移动端请求头（porn91）或桌面端请求头（其他站点）
+    final headers = CrawlerConfig.getHeaders(_siteType);
+    
     _dio.options = BaseOptions(
       connectTimeout: Duration(seconds: CrawlerConfig.connectTimeout),
       receiveTimeout: Duration(seconds: CrawlerConfig.readTimeout),
-      headers: CrawlerConfig.defaultHeaders,
+      headers: headers,
       followRedirects: true,
       // 禁用 Dio HTTP 客户端缓存
       receiveDataWhenStatusError: false,
@@ -105,6 +108,10 @@ class CrawlerCore {
     
     // 设置语言 Cookie（关键！）
     _setLanguageCookie();
+    
+    // 日志记录请求头类型
+    final isMobile = _siteType == "porn91";
+    Logger().logSync('Crawler', '使用${isMobile ? "移动端" : "桌面端"}请求头 (siteType=$_siteType)');
   }
 
   /// 设置语言 Cookie - 必须与 Python 版本一致
