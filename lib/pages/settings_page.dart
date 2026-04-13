@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/app_state.dart';
+import '../services/auth_service.dart';
 import '../crawler/config.dart';
 import '../utils/logger.dart';
 
@@ -15,15 +16,28 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClientMixin {
+  final AuthService _authService = AuthService();
+  bool _biometricSupported = false;
+  
   @override
   bool get wantKeepAlive => true;  // 保持状态
   
   @override
   void initState() {
     super.initState();
+    _checkBiometricSupport();
     Future.microtask(() {
       context.read<AppState>().init();
     });
+  }
+  
+  Future<void> _checkBiometricSupport() async {
+    final supported = await _authService.isDeviceSupported();
+    if (mounted) {
+      setState(() {
+        _biometricSupported = supported;
+      });
+    }
   }
   
   @override
@@ -490,6 +504,27 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
                 appState.setExternalPlayer(v);
               },
             ),
+            // 应用锁设置
+            if (_biometricSupported) ...[
+              Divider(),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('应用锁'),
+                subtitle: Text('进入应用时需要指纹或面容验证'),
+                value: appState.appLockEnabled,
+                onChanged: (v) async {
+                  // 开启时先验证一次
+                  if (v) {
+                    final success = await _authService.authenticate();
+                    if (success && mounted) {
+                      await appState.toggleAppLock(true);
+                    }
+                  } else {
+                    await appState.toggleAppLock(false);
+                  }
+                },
+              ),
+            ],
           ],
         ),
       ),

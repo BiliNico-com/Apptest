@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../services/app_state.dart';
 import '../models/video_info.dart';
@@ -87,6 +88,19 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   }
   
   /// 加载更多（下一页）
+  /// 下拉刷新（只在顶部时触发）
+  Future<void> _onRefresh() async {
+    if (_searchQuery.isEmpty) return;
+    
+    // 重新搜索
+    setState(() {
+      _searchResults.clear();
+      _currentPage = 1;
+      _hasMore = true;
+    });
+    await _performSearch(_searchQuery);
+  }
+  
   Future<void> _loadMore() async {
     if (!_hasMore || _isLoading || _isLoadingMore || _lastKeyword.isEmpty) return;
     

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'pages/main_page.dart';
 import 'services/app_state.dart';
+import 'services/auth_service.dart';
 import 'utils/logger.dart';
 
 void main() async {
@@ -10,6 +11,105 @@ void main() async {
   // 初始化日志
   
   runApp(const MyApp());
+}
+
+/// 认证包装组件 - 处理应用锁
+class AuthWrapper extends StatefulWidget {
+  final Widget child;
+  
+  const AuthWrapper({super.key, required this.child});
+  
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  final AuthService _authService = AuthService();
+  bool _isAuthenticating = false;
+  String? _authError;
+  
+  @override
+  void initState() {
+    super.initState();
+    // 延迟检查认证
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAuthentication();
+    });
+  }
+  
+  Future<void> _checkAuthentication() async {
+    final appState = context.read<AppState>();
+    
+    // 如果未启用应用锁或已认证，直接进入
+    if (!appState.appLockEnabled || appState.isAuthenticated) {
+      return;
+    }
+    
+    // 需要认证
+    setState(() {
+      _isAuthenticating = true;
+    });
+  }
+  
+  Future<void> _authenticate() async {
+    final appState = context.read<AppState>();
+    
+    final success = await _authService.authenticate();
+    
+    if (success) {
+      appState.setAuthenticated(true);
+      setState(() {
+        _isAuthenticating = false;
+      });
+    } else {
+      setState(() {
+        _authError = '认证失败，请重试';
+      });
+    }
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    final appState = context.watch<AppState>();
+    
+    // 不需要认证或已认证
+    if (!appState.appLockEnabled || appState.isAuthenticated || !_isAuthenticating) {
+      return widget.child;
+    }
+    
+    // 显示认证界面
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.fingerprint, size: 80, color: Colors.white70),
+            SizedBox(height: 24),
+            Text(
+              '请验证身份',
+              style: TextStyle(fontSize: 24, color: Colors.white),
+            ),
+            SizedBox(height: 16),
+            if (_authError != null)
+              Text(
+                _authError!,
+                style: TextStyle(color: Colors.red),
+              ),
+            SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: _authenticate,
+              icon: Icon(Icons.fingerprint),
+              label: Text('验证'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// 主题状态包装组件，监听系统主题变化
@@ -77,7 +177,7 @@ class MyApp extends StatelessWidget {
               themeMode: appState.themeMode == 2 
                   ? ThemeMode.system  // 跟随系统
                   : (appState.themeMode == 0 ? ThemeMode.light : ThemeMode.dark),
-              home: const MainPage(),
+              home: AuthWrapper(child: const MainPage()),
             ),
           );
         },

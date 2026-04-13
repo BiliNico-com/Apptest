@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../crawler/config.dart';
 import '../models/video_info.dart';
@@ -106,6 +107,22 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   void _scrollToTop() {
     _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
   }
+  
+  /// 下拉刷新（只在顶部时触发）
+  Future<void> _onRefresh() async {
+    final appState = context.read<AppState>();
+    final crawler = appState.crawler;
+    if (crawler == null) return;
+    
+    // 重新加载第一页
+    setState(() {
+      _videos.clear();
+      _selectedIds.clear();
+      _loadedPage = 0;
+      _hasMore = true;
+    });
+    await _goToPage();
+  }
 
   static const _typeNamesPorn91 = {
     'list': '视频',
@@ -150,6 +167,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               CustomScrollView(
                 controller: _scrollController,
                 slivers: [
+                  // ✅ 下拉刷新（只在顶部时触发）
+                  CupertinoSliverRefreshControl(
+                    onRefresh: _onRefresh,
+                  ),
+                  
                   // ══════════════════════════════════════
                   //  自定义 Header（替代原 SliverAppBar）
                   // ══════════════════════════════════════

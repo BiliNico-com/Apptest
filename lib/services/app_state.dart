@@ -45,6 +45,10 @@ class AppState extends ChangeNotifier {
 
   // 隐私模式：模糊预览图
   bool privacyMode = false;
+  
+  // 应用锁：进入APP需要生物识别认证
+  bool appLockEnabled = false;
+  bool isAuthenticated = false;  // 当前会话是否已认证
 
   // 当前页面索引（用于导航）
   int currentPageIndex = 0;
@@ -100,6 +104,7 @@ class AppState extends ChangeNotifier {
     showBackToTop = prefs.getBool('showBackToTop') ?? true;
     backToTopPosition = prefs.getString('backToTopPosition') ?? 'right';
     useExternalPlayer = prefs.getBool('useExternalPlayer') ?? false;
+    appLockEnabled = prefs.getBool('appLockEnabled') ?? false;
     
     notifyListeners();
   }
@@ -119,6 +124,7 @@ class AppState extends ChangeNotifier {
     await prefs.setBool('showBackToTop', showBackToTop);
     await prefs.setString('backToTopPosition', backToTopPosition);
     await prefs.setBool('useExternalPlayer', useExternalPlayer);
+    await prefs.setBool('appLockEnabled', appLockEnabled);
   }
 
   // 请求存储权限 - 适配 Android 13+ 的细粒度媒体权限
@@ -339,6 +345,19 @@ class AppState extends ChangeNotifier {
   // 切换隐私模式
   void togglePrivacyMode() {
     privacyMode = !privacyMode;
+    notifyListeners();
+  }
+  
+  // 切换应用锁
+  Future<void> toggleAppLock(bool enable) async {
+    appLockEnabled = enable;
+    await _saveSettings();
+    notifyListeners();
+  }
+  
+  // 设置已认证状态
+  void setAuthenticated(bool authenticated) {
+    isAuthenticated = authenticated;
     notifyListeners();
   }
   

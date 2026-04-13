@@ -253,12 +253,14 @@ class DownloadManager extends ChangeNotifier {
         task.progress = 1.0;
         task.progressText = '下载完成';
         task.downloadSpeed = 0.0;
+        task.endTime = DateTime.now();  // ✅ 设置结束时间
         _saveTaskToDb(task);  // 更新数据库
       } else {
         await logger.log('Download', '下载失败: ${task.video.title}');
         task.status = DownloadStatus.failed;
         task.error = '下载失败';
         task.downloadSpeed = 0.0;
+        task.endTime = DateTime.now();  // ✅ 设置结束时间
       }
       
     } catch (e) {
@@ -266,6 +268,7 @@ class DownloadManager extends ChangeNotifier {
       task.status = DownloadStatus.failed;
       task.error = e.toString();
       task.downloadSpeed = 0.0;
+      task.endTime = DateTime.now();  // ✅ 设置结束时间
     }
     
     notifyListeners();
