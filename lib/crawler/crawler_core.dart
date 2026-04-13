@@ -719,6 +719,25 @@ class CrawlerCore {
       
       await logger.log('Crawler', '视频详情响应: ${html.length} 字节');
       
+      // ✅ 调试：保存播放页HTML
+      if (saveDebugHtml) {
+        try {
+          final baseDir = await getExternalStorageDirectory();
+          if (baseDir != null) {
+            final dir = Directory('${baseDir.path}/debug_html');
+            if (!await dir.exists()) {
+              await dir.create(recursive: true);
+            }
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final file = File('${dir.path}/${_siteType}_detail_${video.id}_$timestamp.html');
+            await file.writeAsString(html);
+            await logger.log('Debug', '播放页HTML已保存: ${file.path}');
+          }
+        } catch (e) {
+          await logger.log('Debug', '保存播放页HTML失败: $e');
+        }
+      }
+      
       String? videoUrl;
       String? extractionMethod;
       
@@ -731,6 +750,7 @@ class CrawlerCore {
           final idMatch = RegExp(r'/(\d+)\.jpe?g').firstMatch(video.cover!);
           if (idMatch != null) {
             videoId = idMatch.group(1);
+            await logger.log('Debug', '封面ID: $videoId (封面URL: ${video.cover})');
           }
         }
         
@@ -738,12 +758,14 @@ class CrawlerCore {
         // 可能有多个strencode2调用，优先匹配封面ID
         final strencodePattern = RegExp(r'''strencode2\(["'](%[0-9a-fA-F]{2}[^"']+)["']\)''');
         final strencodeMatches = strencodePattern.allMatches(html).toList();
+        await logger.log('Debug', '找到 ${strencodeMatches.length} 个strencode2调用');
         
         for (var i = 0; i < strencodeMatches.length; i++) {
           final m = strencodeMatches[i];
           try {
             final encoded = m.group(1)!;
             final decoded = Uri.decodeComponent(encoded);
+            await logger.log('Debug', 'strencode2#${i+1} 解码结果: ${decoded.length > 200 ? decoded.substring(0, 200) + "..." : decoded}');
             
             // 提取 src 属性
             final srcPattern = RegExp(r'''src=["']([^"']+)["']''', caseSensitive: false);
@@ -755,21 +777,24 @@ class CrawlerCore {
                 // 提取视频URL中的ID
                 final urlIdMatch = RegExp(r'/(\d+)\.(?:mp4|m3u8)').firstMatch(src);
                 final urlVideoId = urlIdMatch?.group(1);
+                await logger.log('Debug', '提取到视频URL: ID=$urlVideoId, URL=${src.length > 100 ? src.substring(0, 100) + "..." : src}');
                 
                 // 优先匹配封面ID
                 if (videoId != null && urlVideoId == videoId) {
                   videoUrl = src;
                   extractionMethod = 'strencode2解码(ID匹配)';
+                  await logger.log('Debug', '✅ 封面ID匹配成功: videoId=$videoId');
                   break;  // 找到匹配的，退出循环
                 } else if (videoUrl == null) {
                   // 没有封面ID时，取第一个作为候选
                   videoUrl = src;
                   extractionMethod = 'strencode2解码(首个)';
+                  await logger.log('Debug', '⚠️ 未匹配封面ID，使用首个候选 (封面ID=$videoId, 视频ID=$urlVideoId)');
                 }
               }
             }
           } catch (e) {
-            // 解码失败，继续下一个
+            await logger.log('Debug', 'strencode2解码失败: $e');
           }
         }
         
@@ -942,7 +967,25 @@ class CrawlerCore {
       video = detail;
     }
     
-    final videoUrl = video.m3u8Url!;
+    var videoUrl = video.m3u8Url!;
+    
+    // ✅ porn91 专用：校验视频ID与封面ID是否一致
+    if (_siteType == "porn91" && video.cover != null) {
+      // 从封面URL提取封面ID
+      final coverIdMatch = RegExp(r'/(\d+)\.jpe?g').firstMatch(video.cover!);
+      final coverId = coverIdMatch?.group(1);
+      
+      // 从视频URL提取视频ID
+      final videoIdMatch = RegExp(r'/(\d+)\.(?:mp4|m3u8)').firstMatch(videoUrl);
+      final videoId = videoIdMatch?.group(1);
+      
+      if (coverId != null && videoId != null && coverId != videoId) {
+        // ID不匹配，用封面ID替换
+        final correctedUrl = videoUrl.replaceAll('/$videoId.', '/$coverId.');
+        onLog?.call('⚠️ 视频ID($videoId)与封面ID($coverId)不匹配，已修正', 'warning');
+        videoUrl = correctedUrl;
+      }
+    }
     
     // 检查是否是直接 MP4 链接（porn91 等站点使用）
     final isDirectMp4 = videoUrl.endsWith('.mp4') || videoUrl.contains('.mp4?');
