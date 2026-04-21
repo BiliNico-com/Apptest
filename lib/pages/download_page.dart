@@ -5,6 +5,7 @@ import 'package:chewie/chewie.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:volume_controller/volume_controller.dart';
+import 'dart:async';
 import 'dart:io';
 import '../services/app_state.dart';
 import '../services/download_manager.dart';
