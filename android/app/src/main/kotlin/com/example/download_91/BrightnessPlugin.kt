@@ -1,8 +1,8 @@
 package com.example.download_91
 
 import android.app.Activity
-import android.content.Context
 import android.view.WindowManager
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 class BrightnessPlugin(private val activity: Activity) {
