@@ -148,7 +148,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       _authorVideos.clear();
       _currentAuthorId = '';
       _currentAuthorName = '';
+      _selectedIds.clear();
     });
+    _scrollToTop();
   }
   
   /// 加载更多作者视频
@@ -184,14 +186,25 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     final crawler = appState.crawler;
     if (crawler == null) return;
     
-    // 重新加载第一页
-    setState(() {
-      _videos.clear();
-      _selectedIds.clear();
-      _loadedPage = 0;
-      _hasMore = true;
-    });
-    await _goToPage();
+    if (_isAuthorPageMode) {
+      // ✅ 修复：作者模式下刷新作者视频
+      setState(() {
+        _authorVideos.clear();
+        _selectedIds.clear();
+        _authorCurrentPage = 0;
+        _authorHasMore = true;
+      });
+      await _loadMoreAuthorVideos();
+    } else {
+      // 重新加载第一页
+      setState(() {
+        _videos.clear();
+        _selectedIds.clear();
+        _loadedPage = 0;
+        _hasMore = true;
+      });
+      await _goToPage();
+    }
   }
 
   static const _typeNamesPorn91 = {
@@ -254,11 +267,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       collapseRatio: _collapseRatio,
                       selectedType: _selectedType,
                       typeNames: _getTypeNames(appState.crawler?.siteType ?? 'original'),
-                      videoCount: _videos.length,
+                      videoCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
                       selectedCount: _selectedIds.length,
-                      totalCount: _videos.length,
+                      totalCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
                       status: _status,
                       privacyMode: appState.privacyMode,
+                      isAuthorPageMode: _isAuthorPageMode,
+                      authorName: _currentAuthorName,
+                      onBack: _isAuthorPageMode ? _exitAuthorPageMode : null,
                       onTypeChanged: (v) async {
                         if (v != null && v != _selectedType) {
                           setState(() {
@@ -273,12 +289,13 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       },
                       onPrivacyToggle: () => appState.togglePrivacyMode(),
                       onSelectAll: () {
-                        final isAllSelected = _selectedIds.length == _videos.length;
+                        final currentVideos = _isAuthorPageMode ? _authorVideos : _videos;
+                        final isAllSelected = _selectedIds.length == currentVideos.length;
                         setState(() {
                           if (isAllSelected) {
                             _selectedIds.clear();
                           } else {
-                            _selectedIds = _videos.map((v) => v.id).toSet();
+                            _selectedIds = currentVideos.map((v) => v.id).toSet();
                           }
                         });
                       },
@@ -356,10 +373,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
 
   Widget _buildSliverVideoGrid(AppState appState) {
     final isListMode = appState.videoDisplayMode == 'list';
-    if (_isLoading && _videos.isEmpty) {
+    // ✅ 修复：根据作者页面模式切换数据源
+    final videos = _isAuthorPageMode ? _authorVideos : _videos;
+    if (_isLoading && videos.isEmpty) {
       return SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
     }
-    if (_videos.isEmpty) {
+    if (videos.isEmpty) {
       return SliverToBoxAdapter(
         child: Center(
           child: Column(
@@ -367,7 +386,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             children: [
               Icon(Icons.video_library_outlined, size: 64, color: Colors.grey),
               SizedBox(height: 16),
-              Text('输入页码并点击跳转', style: TextStyle(color: Colors.grey)),
+              Text(_isAuthorPageMode ? '该作者暂无视频' : '输入页码并点击跳转', style: TextStyle(color: Colors.grey)),
             ],
           ),
         ),
@@ -376,8 +395,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     if (isListMode) {
       return SliverList(
         delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildVideoListItem(_videos[index], appState),
-          childCount: _videos.length,
+          (context, index) => _buildVideoListItem(videos[index], appState),
+          childCount: videos.length,
         ),
       );
     } else {
@@ -389,8 +408,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           mainAxisSpacing: 8,
         ),
         delegate: SliverChildBuilderDelegate(
-          (context, index) => _buildVideoGridItem(_videos[index], appState),
-          childCount: _videos.length,
+          (context, index) => _buildVideoGridItem(videos[index], appState),
+          childCount: videos.length,
         ),
       );
     }
@@ -756,7 +775,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
 
   Future<void> _startDownload() async {
     final appState = context.read<AppState>();
-    final selectedVideos = _videos.where((v) => _selectedIds.contains(v.id)).toList();
+    // ✅ 修复：根据作者页面模式使用正确的视频列表
+    final currentVideos = _isAuthorPageMode ? _authorVideos : _videos;
+    final selectedVideos = currentVideos.where((v) => _selectedIds.contains(v.id)).toList();
     for (final video in selectedVideos) {
       appState.downloadManager.addTask(video);
     }
@@ -788,6 +809,9 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
   final int totalCount;
   final String status;
   final bool privacyMode;
+  final bool isAuthorPageMode;
+  final String authorName;
+  final VoidCallback? onBack;
   final ValueChanged<String?> onTypeChanged;
   final VoidCallback onPrivacyToggle;
   final VoidCallback onSelectAll;
@@ -804,6 +828,9 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.totalCount,
     required this.status,
     required this.privacyMode,
+    this.isAuthorPageMode = false,
+    this.authorName = '',
+    this.onBack,
     required this.onTypeChanged,
     required this.onPrivacyToggle,
     required this.onSelectAll,
@@ -818,6 +845,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext ctx, double shrinkOffset, bool overlapsContent) {
     final isDark = Theme.of(ctx).brightness == Brightness.dark;
+    // ✅ 修复：作者模式下显示作者名称
+    final displayTitle = isAuthorPageMode ? '作者: $authorName' : '批量爬取';
     
     return ClipRect(
       child: BackdropFilter(
@@ -835,11 +864,25 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // ✅ 修复：作者模式下显示返回按钮
+                    if (isAuthorPageMode && onBack != null)
+                      GestureDetector(
+                        onTap: onBack,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.arrow_back, size: 20, color: Colors.blue),
+                        ),
+                      ),
                     // 左侧：展开时显示标题（占满左侧），收起时显示下拉选择器（紧凑宽度）
                     collapseRatio < 0.5
                         ? Expanded(
                             child: Text(
-                              '批量爬取',
+                              displayTitle,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
@@ -861,13 +904,13 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
                   child: Text(
-                    '已加载 $videoCount 个视频',
+                    isAuthorPageMode ? '已加载 $videoCount 个视频 (作者主页)' : '已加载 $videoCount 个视频',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ),
               
-              // ── 第三行：下拉选择器（展开时显示）──
-              if (collapseRatio < 0.5)
+              // ── 第三行：下拉选择器（展开时显示，作者模式下隐藏）──
+              if (collapseRatio < 0.5 && !isAuthorPageMode)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: _buildTypeChip(ctx, isDark),
@@ -1020,5 +1063,7 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
       old.selectedCount != selectedCount ||
       old.totalCount != totalCount ||
       old.status != status ||
-      old.privacyMode != privacyMode;
+      old.privacyMode != privacyMode ||
+      old.isAuthorPageMode != isAuthorPageMode ||
+      old.authorName != authorName;
 }
