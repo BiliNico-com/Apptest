@@ -9,6 +9,7 @@ import '../models/video_info.dart';
 import '../utils/logger.dart';
 import 'download_manager.dart';
 import 'followed_authors_service.dart';
+import 'version_service.dart';
 
 class AppState extends ChangeNotifier {
   // 初始化标志（公共变量，供 main.dart 访问）
@@ -136,6 +137,8 @@ class AppState extends ChangeNotifier {
     followedAuthorsService.setExternalDbPath(downloadDir.isNotEmpty ? downloadDir : null);
     // 初始化关注作者服务并加载关注列表
     await followedAuthorsService.refresh();
+    // 初始化版本服务
+    await VersionService.init();
     // 恢复未完成的下载任务
     await _downloadManager.restorePendingTasks();
   }

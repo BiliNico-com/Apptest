@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// 版本信息
 class VersionInfo {
@@ -32,18 +33,34 @@ class VersionInfo {
     );
   }
 
-  String get fullVersion => 'v$version build$buildNumber';
+  String get fullVersion => 'v$version.$buildNumber';
 }
 
 /// 版本服务
 class VersionService {
   static const String _versionUrl = 'https://raw.githubusercontent.com/BiliNico-com/91Download-Mobile/main/version.json';
-  static const String _currentVersion = '1.0.5';
-  static const int _currentBuild = 310;  // 自动更新：git rev-list --count HEAD
-
+  
+  static String _currentVersion = '1.0.5';
+  static int _currentBuild = 0;
+  static bool _initialized = false;
+  
+  /// 初始化版本信息（从app本身获取）
+  static Future<void> init() async {
+    if (_initialized) return;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _currentVersion = info.version;
+      // buildNumber从pubspec.yaml的version字段获取，格式：1.0.5+310
+      _currentBuild = int.tryParse(info.buildNumber) ?? 0;
+      _initialized = true;
+    } catch (e) {
+      debugPrint('获取版本信息失败: $e');
+    }
+  }
+  
   static String get currentVersion => _currentVersion;
   static int get currentBuild => _currentBuild;
-  static String get fullVersion => 'v$_currentVersion build$_currentBuild';
+  static String get fullVersion => 'v$_currentVersion.$_currentBuild';
 
   final Dio _dio = Dio();
 
