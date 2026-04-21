@@ -134,6 +134,8 @@ class AppState extends ChangeNotifier {
     _downloadManager.externalDbPath = downloadDir.isNotEmpty ? downloadDir : null;
     // 设置关注作者服务的外部数据库路径
     followedAuthorsService.setExternalDbPath(downloadDir.isNotEmpty ? downloadDir : null);
+    // 初始化关注作者服务并加载关注列表
+    await followedAuthorsService.refresh();
     // 恢复未完成的下载任务
     await _downloadManager.restorePendingTasks();
   }

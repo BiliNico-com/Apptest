@@ -269,7 +269,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     return Consumer<AppState>(
       builder: (context, appState, _) {
         // 检查是否有待进入的作者主页（从关注页面跳转）
-        if (appState.pendingAuthorInfo != null && !_isAuthorPageMode) {
+        if (appState.pendingAuthorInfo != null && !_isAuthorPageMode && appState.crawler != null) {
           final info = appState.pendingAuthorInfo!;
           appState.pendingAuthorInfo = null;  // 立即清除，防止重复触发
           WidgetsBinding.instance.addPostFrameCallback((_) {
