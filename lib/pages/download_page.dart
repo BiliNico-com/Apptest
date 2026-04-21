@@ -467,13 +467,13 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
   }
   
   /// 删除选中任务（带确认对话框，询问是否删除本地文件）
-  void _deleteSelectedWithConfirm(AppState appState) async {
+  Future<void> _deleteSelectedWithConfirm(AppState appState) async {
     final count = _selectedIds.length;
     bool deleteFile = true;  // ✅ 默认勾选删除文件
     
     final result = await showDialog<Map<String, bool>>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Text('确认删除'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -504,12 +504,12 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('取消'),
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(context, {'deleteFile': deleteFile});
+              Navigator.pop(dialogContext, {'deleteFile': deleteFile});
             },
             child: Text('确定', style: TextStyle(color: Colors.red)),
           ),
@@ -517,12 +517,17 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
       ),
     );
     
-    if (result != null) {
-      final shouldDeleteFile = result['deleteFile'] ?? true;
+    print('删除对话框返回结果: $result');
+    
+    if (result != null && result['deleteFile'] != null) {
+      final shouldDeleteFile = result['deleteFile']!;
       final idsToDelete = _selectedIds.toList();
+      
+      print('准备删除 ${idsToDelete.length} 个任务, 删除文件: $shouldDeleteFile');
       
       for (final id in idsToDelete) {
         final task = appState.downloadManager.getTask(id);
+        print('任务 $id: ${task != null ? "存在" : "不存在"}');
         
         // 删除本地文件
         if (shouldDeleteFile && task != null && task.filePath != null && task.filePath!.isNotEmpty) {
@@ -565,6 +570,8 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
           SnackBar(content: Text('已删除 ${idsToDelete.length} 个记录')),
         );
       }
+    } else {
+      print('删除操作被取消或返回值异常');
     }
   }
   

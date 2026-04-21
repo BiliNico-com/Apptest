@@ -89,10 +89,17 @@ class AppState extends ChangeNotifier {
   AppState() {
     // 监听下载管理器的变化并转发通知
     _downloadManager = DownloadManager()..addListener(_onDownloadManagerChanged);
+    // 监听关注服务的变化并转发通知
+    followedAuthorsService.addListener(_onFollowedAuthorsChanged);
   }
   
   void _onDownloadManagerChanged() {
     // 转发下载管理器的通知
+    notifyListeners();
+  }
+  
+  void _onFollowedAuthorsChanged() {
+    // 转发关注服务的变化通知
     notifyListeners();
   }
 

@@ -198,8 +198,10 @@ class FollowedAuthorsService extends ChangeNotifier {
         whereArgs: [authorId],
       );
       
-      _followedCache[authorId] = false;
+      // 从缓存中移除（而不是设置为 false）
+      _followedCache.remove(authorId);
       _followedList.removeWhere((a) => a.authorId == authorId);
+      debugPrint('[FollowedAuthors] 已取消关注: $authorId, 剩余 ${_followedList.length} 个关注');
       notifyListeners();
       
       return true;
