@@ -243,10 +243,19 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     
     return WillPopScope(
       onWillPop: () async {
-        // 作者主页模式下拦截返回键
+        // 作者主页模式下拦截返回键 -> 退出作者主页
         if (_isAuthorPageMode) {
           _exitAuthorPageMode();
-          return false;  // 不退出页面
+          return false;
+        }
+        // 作者搜索模式下拦截返回键 -> 退出作者搜索模式
+        if (_isAuthorMode) {
+          setState(() {
+            _isAuthorMode = false;
+            _authorResults.clear();
+            _selectedIds.clear();
+          });
+          return false;
         }
         return true;  // 正常返回
       },
