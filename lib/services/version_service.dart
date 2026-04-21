@@ -54,10 +54,8 @@ class VersionService {
       ));
       
       if (response.statusCode == 200) {
-        final json = response.data;
-        if (json is String) {
-          json = jsonDecode(json);
-        }
+        final data = response.data;
+        final json = data is String ? jsonDecode(data) : data;
         return VersionInfo.fromJson(json);
       }
     } catch (e) {
