@@ -76,12 +76,12 @@ class _MainPageState extends State<MainPage> {
       _lastPressedTime = now;
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('再按一次退出程序'),
+        const SnackBar(
+          content: Text('再按一次退出程序'),
           duration: _exitTimeout,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.only(
-            bottom: MediaQuery.of(context).size.height - 100,
+            bottom: 80,
             left: 16,
             right: 16,
           ),

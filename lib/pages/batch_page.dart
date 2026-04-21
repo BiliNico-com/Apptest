@@ -279,32 +279,41 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         if (_videos.isEmpty && !_isLoading && appState.crawler != null) {
           Future.microtask(() => _goToPage());
         }
-        return Scaffold(
-          extendBodyBehindAppBar: true,
-          body: Stack(
-            children: [
-              RefreshIndicator(
-                onRefresh: _onRefresh,
-                color: Colors.blue,
-                backgroundColor: Colors.white,
-                displacement: 40,
-                child: CustomScrollView(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  // ══════════════════════════════════════
-                  //  自定义 Header（替代原 SliverAppBar）
-                  // ══════════════════════════════════════
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _BatchHeaderDelegate(
-                      statusBarHeight: statusBarH,
-                      expandedHeight: _kExpandedHeight,
-                      collapsedHeight: _kCollapsedHeight,
-                      collapseRatio: _collapseRatio,
-                      selectedType: _selectedType,
-                      typeNames: _getTypeNames(appState.crawler?.siteType ?? 'original'),
-                      videoCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
+        return WillPopScope(
+          onWillPop: () async {
+            // 作者主页模式下拦截返回键
+            if (_isAuthorPageMode) {
+              _exitAuthorPageMode();
+              return false;  // 不退出页面
+            }
+            return true;  // 正常返回
+          },
+          child: Scaffold(
+            extendBodyBehindAppBar: true,
+            body: Stack(
+              children: [
+                RefreshIndicator(
+                  onRefresh: _onRefresh,
+                  color: Colors.blue,
+                  backgroundColor: Colors.white,
+                  displacement: 40,
+                  child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    // ══════════════════════════════════════
+                    //  自定义 Header（替代原 SliverAppBar）
+                    // ══════════════════════════════════════
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _BatchHeaderDelegate(
+                        statusBarHeight: statusBarH,
+                        expandedHeight: _kExpandedHeight,
+                        collapsedHeight: _kCollapsedHeight,
+                        collapseRatio: _collapseRatio,
+                        selectedType: _selectedType,
+                        typeNames: _getTypeNames(appState.crawler?.siteType ?? 'original'),
+                        videoCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
                       selectedCount: _selectedIds.length,
                       totalCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
                       status: _status,
@@ -356,7 +365,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               ..._buildOverlays(appState),
             ],
           ),
-        );
+        ),
+        );  // WillPopScope
       },
     );
   }
@@ -1004,7 +1014,7 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                           child: Icon(Icons.arrow_back, size: 20, color: Colors.blue),
                         ),
                       ),
-                    // 左侧：展开时显示标题（占满左侧），收起时显示下拉选择器（紧凑宽度）
+                    // 左侧：展开时显示标题，收起时根据模式显示
                     collapseRatio < 0.5
                         ? Expanded(
                             child: Text(
@@ -1016,7 +1026,19 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                               ),
                             ),
                           )
-                        : _buildTypeChip(ctx, isDark),
+                        // 收起时：作者模式显示作者名，非作者模式显示下拉选择器
+                        : isAuthorPageMode
+                            ? Expanded(
+                                child: Text(
+                                  displayTitle,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              )
+                            : _buildTypeChip(ctx, isDark),
                     // 收起时加 Spacer 让右侧按钮靠右
                     if (collapseRatio >= 0.5) const Spacer(),
                     // 右侧按钮
