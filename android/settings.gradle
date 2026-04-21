@@ -22,15 +22,4 @@ plugins {
     id "org.jetbrains.kotlin.android" version "1.9.22" apply false
 }
 
-// 为所有子项目（包括 Flutter 插件）强制添加 core-ktx 依赖
-gradle.beforeProject { project ->
-    project.afterEvaluate {
-        if (project.hasProperty('android')) {
-            project.dependencies {
-                implementation "androidx.core:core-ktx:1.12.0"
-            }
-        }
-    }
-}
-
 include ":app"
