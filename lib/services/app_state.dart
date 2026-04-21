@@ -63,6 +63,17 @@ class AppState extends ChangeNotifier {
   // 当前页面索引（用于导航）
   int currentPageIndex = 0;
   Function(int)? navigateToPage;  // 由 MainPage 设置
+  
+  // 待进入的作者主页信息（从关注页面跳转时使用）
+  Map<String, String>? pendingAuthorInfo;  // {'authorId': '...', 'authorName': '...'}
+  
+  /// 设置待进入的作者主页并跳转到批量页面
+  void enterAuthorFromFollowed(String authorId, String authorName) {
+    pendingAuthorInfo = {'authorId': authorId, 'authorName': authorName};
+    if (navigateToPage != null) {
+      navigateToPage!(0);  // 跳转到批量页面
+    }
+  }
 
   // 爬虫实例
   CrawlerCore? _crawler;

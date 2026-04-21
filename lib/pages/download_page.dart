@@ -414,12 +414,8 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
                     Spacer(),
                     if (_selectedIds.isNotEmpty)
                       TextButton(
-                        onPressed: () {
-                          _deleteSelectedWithConfirm(appState);
-                          setState(() {
-                            _isCompletedSelectMode = false;
-                            _selectedIds.clear();
-                          });
+                        onPressed: () async {
+                          await _deleteSelectedWithConfirm(appState);
                         },
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -529,12 +525,14 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
         final task = appState.downloadManager.getTask(id);
         
         // 删除本地文件
-        if (shouldDeleteFile && task?.filePath != null && task!.filePath!.isNotEmpty) {
+        if (shouldDeleteFile && task != null && task.filePath != null && task.filePath!.isNotEmpty) {
           try {
             final file = File(task.filePath!);
             if (await file.exists()) {
               await file.delete();
               print('已删除文件: ${task.filePath}');
+            } else {
+              print('文件不存在: ${task.filePath}');
             }
           } catch (e) {
             print('删除文件失败: $e');
@@ -545,6 +543,7 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
         if (appState.crawler != null) {
           try {
             await appState.crawler!.deleteDownloadHistory(id);
+            print('已删除历史记录: $id');
           } catch (e) {
             print('删除历史记录失败: $e');
           }
@@ -552,12 +551,20 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
         
         // 删除任务
         appState.downloadManager.cancelTask(id);
+        print('已取消任务: $id');
       }
       
       setState(() {
         _selectedIds.clear();
         _isCompletedSelectMode = false;
       });
+      
+      // 显示删除成功提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已删除 ${idsToDelete.length} 个记录')),
+        );
+      }
     }
   }
   

@@ -59,6 +59,16 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     super.initState();
     _scrollController.addListener(_onScroll);
     _pageController.text = '1';
+    
+    // 检查是否有待进入的作者主页（从关注页面跳转）
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = context.read<AppState>();
+      if (appState.pendingAuthorInfo != null) {
+        final info = appState.pendingAuthorInfo!;
+        appState.pendingAuthorInfo = null;  // 清除
+        _enterAuthorPageMode(info['authorId']!, info['authorName']!);
+      }
+    });
   }
 
   @override
@@ -969,7 +979,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
-            action: SnackBarAction(label: '查看', onPressed: () => appState.navigateToPage?.call(2)),
+            action: SnackBarAction(label: '查看', onPressed: () => appState.navigateToPage?.call(3)),
           ),
         );
       }
