@@ -192,8 +192,13 @@ class CrawlerConfig {
   );
 
   /// 作者提取 - porn91 风格
+  /// 匹配多种格式：
+  /// - 作者：</span>xxx
+  /// - 作者:xxx
+  /// - 作者：xxx
+  /// - <span>作者</span>：xxx
   static final RegExp authorPattern = RegExp(
-    r'作者[：:]\s*</span>\s*([^<\n]+)',
+    r'作者[：:][\s\S]{0,20}?([^<\n\r]{2,20})',
   );
   
   /// 作者提取 - original 风格

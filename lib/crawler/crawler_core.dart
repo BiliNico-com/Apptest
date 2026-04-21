@@ -342,11 +342,35 @@ class CrawlerCore {
       
       final title = titleMatch.group(1)!.trim();
       
-      // 提取作者
+      // 提取作者（尝试多种格式）
       String? author;
-      final authorMatch = CrawlerConfig.authorPattern.firstMatch(wellContent);
+      
+      // 格式1: 作者：</span>xxx
+      var authorMatch = CrawlerConfig.authorPattern.firstMatch(wellContent);
       if (authorMatch != null) {
         author = authorMatch.group(1)!.trim();
+      }
+      
+      // 格式2: <a href="...author=xxx">作者名</a>
+      if (author == null || author.isEmpty) {
+        final linkMatch = RegExp(r'href="[^"]*author=([^"&]+)[^"]*"[^>]*>([^<]+)</a>', caseSensitive: false).firstMatch(wellContent);
+        if (linkMatch != null) {
+          author = linkMatch.group(2)?.trim();
+        }
+      }
+      
+      // 格式3: 作者：xxx（直接文本）
+      if (author == null || author.isEmpty) {
+        final textMatch = RegExp(r'作者[：:]\s*([^<\n\r]{2,20})').firstMatch(wellContent);
+        if (textMatch != null) {
+          author = textMatch.group(1)?.trim();
+        }
+      }
+      
+      // 清理作者名（去掉特殊字符）
+      if (author != null) {
+        author = author.replaceAll(RegExp(r'[\s　]+'), ' ').trim();
+        if (author.isEmpty) author = null;
       }
       
       // 提取时长
@@ -459,16 +483,33 @@ class CrawlerCore {
         duration = durationMatch.group(1)!.trim();
       }
       
-      // ✅ 修复：提取作者 <a href="user.htm?author=xxx">作者名</a>
-      // ml0987 格式: <p>&nbsp;&nbsp;<a href="...user.htm?author=xxx">&nbsp;作者名</a>
+      // 提取作者（多种格式尝试）
+      // ml0987 格式: <a href="user.htm?author=xxx">作者名</a>
       String? author;
       String? authorId;
-      final authorMatch = RegExp(
-        r'<a[^>]*href="[^"]*user\.htm\?author=([^"]+)"[^>]*>([^<]*)</a>'
+      
+      // 格式1: 带链接的作者 <a href="user.htm?author=xxx">作者名</a>
+      var authorMatch = RegExp(
+        r'<a[^>]*href="[^"]*user\.htm\?author=([^"&]+)"[^>]*>([^<]*)</a>',
+        caseSensitive: false
       ).firstMatch(container);
       if (authorMatch != null) {
         authorId = authorMatch.group(1);
-        author = authorMatch.group(2)?.replaceAll('&nbsp;', '').trim();
+        author = authorMatch.group(2)?.replaceAll('&nbsp;', '').replaceAll(RegExp(r'&[a-z]+;'), '').trim();
+      }
+      
+      // 格式2: 纯文本作者 作者：xxx
+      if (author == null || author.isEmpty) {
+        final textMatch = RegExp(r'作者[：:]\s*([^<\n\r]{2,20})').firstMatch(container);
+        if (textMatch != null) {
+          author = textMatch.group(1)?.trim();
+        }
+      }
+      
+      // 清理作者名
+      if (author != null) {
+        author = author.replaceAll(RegExp(r'[\s　]+'), ' ').trim();
+        if (author.isEmpty) author = null;
       }
       
       // 从封面URL提取封面ID
@@ -541,9 +582,17 @@ class CrawlerCore {
           duration = durationMatch.group(1)!.trim();
         }
         
-        final authorMatch = RegExp(r'<a[^>]*href="user\.htm\?author=([^"]+)"[^>]*>(?:&nbsp;)?([^<]+)</a>').firstMatch(block);
+        // 提取作者（多种格式）
+        var authorMatch = RegExp(r'<a[^>]*href="[^"]*user\.htm\?author=([^"&]+)"[^>]*>([^<]*)</a>', caseSensitive: false).firstMatch(block);
         if (authorMatch != null) {
-          author = authorMatch.group(2)!.trim();
+          author = authorMatch.group(2)?.replaceAll('&nbsp;', '').trim();
+        }
+        // 格式2: 纯文本
+        if (author == null || author!.isEmpty) {
+          final textMatch = RegExp(r'作者[：:]\s*([^<\n\r]{2,20})').firstMatch(block);
+          if (textMatch != null) {
+            author = textMatch.group(1)?.trim();
+          }
         }
         
         // 从封面URL提取封面ID
