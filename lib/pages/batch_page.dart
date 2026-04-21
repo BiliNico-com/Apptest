@@ -1057,8 +1057,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // ✅ 修复：作者模式或已关注模式显示返回按钮
-                    if ((isAuthorPageMode || isFollowedTabMode) && onBack != null)
+                    // 作者模式显示返回按钮
+                    if (isAuthorPageMode && onBack != null)
                       GestureDetector(
                         onTap: onBack,
                         child: Container(
