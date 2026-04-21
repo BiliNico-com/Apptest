@@ -6,23 +6,27 @@ allprojects {
 }
 
 rootProject.buildDir = '../build'
-subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(':app')
-}
 
 // 为所有子项目添加 core-ktx 依赖，修复 screen_brightness_android 的 toUri 错误
-gradle.projectsLoaded {
-    rootProject.subprojects { subproject ->
-        subproject.plugins.whenPluginAdded { plugin ->
-            if (plugin.class.name == 'com.android.build.gradle.LibraryPlugin' ||
-                plugin.class.name == 'com.android.build.gradle.AppPlugin') {
-                subproject.dependencies.add('implementation', 'androidx.core:core-ktx:1.12.0')
+// 必须放在 evaluationDependsOn 之前
+subprojects { subproject ->
+    afterEvaluate {
+        def hasAndroid = subproject.plugins.hasPlugin('com.android.library') || 
+                         subproject.plugins.hasPlugin('com.android.application')
+        if (hasAndroid) {
+            subproject.dependencies {
+                implementation 'androidx.core:core-ktx:1.12.0'
             }
         }
     }
+}
+
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+
+subprojects {
+    project.evaluationDependsOn(':app')
 }
 
 tasks.register("clean", Delete) {
