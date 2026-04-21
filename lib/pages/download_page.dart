@@ -522,14 +522,13 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
       final idsToDelete = _selectedIds.toList();
       int deletedCount = 0;
       
-      // 先清空选择状态，防止 UI 混乱
-      setState(() {
-        _selectedIds.clear();
-        _isCompletedSelectMode = false;
-      });
+      print('准备删除 ${idsToDelete.length} 个任务');
+      print('待删除的 ID 列表: $idsToDelete');
       
       for (final id in idsToDelete) {
+        print('正在处理任务 ID: $id');
         final task = appState.downloadManager.getTask(id);
+        print('getTask 返回: ${task != null ? "存在" : "不存在"}');
         
         // 删除本地文件
         if (shouldDeleteFile) {
@@ -540,6 +539,7 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
               final history = await appState.crawler!.getDownloadHistory(limit: 1000);
               final record = history.firstWhere((h) => h['video_id'] == id, orElse: () => <String, dynamic>{});
               filePath = record['file_path'] as String?;
+              print('从历史记录获取文件路径: $filePath');
             } catch (e) {
               print('获取历史记录失败: $e');
             }
@@ -570,8 +570,15 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
         
         // 从 download_tasks.db 删除任务
         appState.downloadManager.cancelTask(id);
+        print('cancelTask 已调用');
         deletedCount++;
       }
+      
+      // 清空选择状态并刷新 UI
+      setState(() {
+        _selectedIds.clear();
+        _isCompletedSelectMode = false;
+      });
       
       // 显示删除成功提示
       if (mounted) {
