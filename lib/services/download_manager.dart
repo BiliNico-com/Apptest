@@ -306,9 +306,13 @@ class DownloadManager extends ChangeNotifier {
     }
   }
   
+  /// 跟踪正在下载的任务ID，用于取消时判断
+  String? _activeTaskId;
+  
   /// 执行下载
   Future<void> _startDownload(DownloadTask task) async {
     _activeDownloads++;
+    _activeTaskId = task.id;
     
     task.status = DownloadStatus.downloading;
     // 重置下载速度相关数据
@@ -395,14 +399,17 @@ class DownloadManager extends ChangeNotifier {
       task.downloadSpeed = 0.0;
       task.endTime = DateTime.now();
     } finally {
+      // ✅ 清理回调，避免引用泄漏
+      _crawler!.onProgress = null;
+      _crawler!.onOverallProgress = null;
+      // ✅ 下载完成后重置 stopFlag
+      _crawler!.reset();
       // 无论成功或失败，释放并发槽位并启动下一个等待任务
       _activeDownloads--;
+      _activeTaskId = null;
       notifyListeners();
       _tryStartNext();
     }
-    
-    notifyListeners();
-  }
   
   /// 批量添加任务
   /// 返回 (新添加数量, 重复数量, 覆盖数量)
@@ -464,6 +471,8 @@ class DownloadManager extends ChangeNotifier {
     if (task != null && task.status == DownloadStatus.downloading) {
       task.status = DownloadStatus.paused;
       task.downloadSpeed = 0.0;
+      // ✅ 通知爬虫暂停
+      _crawler?.pause();
       notifyListeners();
     }
   }
@@ -474,14 +483,30 @@ class DownloadManager extends ChangeNotifier {
     if (task != null && task.status == DownloadStatus.paused) {
       task.lastUpdateTime = DateTime.now();
       task.lastDownloadedBytes = task.downloadedBytes;
+      // ✅ 通知爬虫恢复
+      _crawler?.resume();
       _tryStartNext(task);
     }
   }
   
   /// 重试任务
-  void retryTask(String taskId) {
+  Future<void> retryTask(String taskId) async {
     final task = _taskMap[taskId];
     if (task != null && task.status == DownloadStatus.failed) {
+      // ✅ 重试前清理可能残留的临时文件
+      if (task.filePath != null && task.filePath!.isNotEmpty) {
+        try {
+          final tempDir = Directory('${task.filePath}_temp');
+          if (await tempDir.exists()) {
+            await tempDir.delete(recursive: true);
+            await logger.log('Download', '重试前清理临时目录: ${task.filePath}_temp');
+          }
+        } catch (e) {
+          // 忽略清理错误
+        }
+      }
+      // ✅ 重置爬虫状态
+      _crawler?.reset();
       task.status = DownloadStatus.pending;
       task.error = null;
       task.progress = 0;
@@ -496,10 +521,10 @@ class DownloadManager extends ChangeNotifier {
   void cancelTask(String taskId) {
     final task = _taskMap[taskId];
     if (task != null) {
-      // 如果任务正在下载中，释放并发槽位
+      // ✅ 如果任务正在下载中，通知爬虫停止并释放槽位
       if (task.status == DownloadStatus.downloading) {
-        // 注意：_startDownload 的 finally 块会处理 _activeDownloads--
-        // 但我们标记为非 downloading 状态，需要在这里处理
+        _crawler?.stop();
+        // finally 块会处理 _activeDownloads-- 和 reset()
       }
       // 从等待队列中移除
       _waitingQueue.remove(task);
@@ -562,6 +587,13 @@ class DownloadManager extends ChangeNotifier {
     } catch (e) {
       Logger().log('Download', '删除任务失败: $e');
     }
+  }
+  
+  /// 清理所有资源
+  @override
+  void dispose() {
+    _crawler?.reset();
+    super.dispose();
   }
   
   /// 从数据库恢复任务

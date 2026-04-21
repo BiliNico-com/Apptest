@@ -87,21 +87,42 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
     _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
   }
   
-  /// 加载更多（下一页）
-  /// 下拉刷新（只在顶部时触发）
+  /// 下拉刷新
   Future<void> _onRefresh() async {
-    if (_lastKeyword.isEmpty) return;
-    
     final appState = context.read<AppState>();
     final crawler = appState.crawler;
     if (crawler == null) return;
+
+    // 作者主页模式
+    if (_isAuthorPageMode) {
+      setState(() {
+        _authorVideos.clear();
+        _selectedIds.clear();
+        _authorCurrentPage = 0;
+        _authorHasMore = true;
+      });
+      await _loadMoreAuthorVideos();
+      return;
+    }
+
+    // 作者搜索模式 — 重新搜索
+    if (_isAuthorMode) {
+      setState(() {
+        _authorResults.clear();
+        _isLoading = false;
+      });
+      final authors = await crawler.searchAuthors(_keywordController.text);
+      if (mounted) {
+        setState(() {
+          _authorResults = authors;
+          _status = authors.isEmpty ? '无结果' : '就绪';
+        });
+      }
+      return;
+    }
     
-    // 重新搜索
-    setState(() {
-      _results.clear();
-      _loadedPage = 0;
-      _hasMore = true;
-    });
+    // 视频搜索模式
+    if (_lastKeyword.isEmpty) return;
     
     final results = await crawler.searchVideos(_lastKeyword, page: 1, sort: _sortBy);
     if (mounted) {
@@ -219,6 +240,10 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
                 CustomScrollView(
                   controller: _scrollController,
                   slivers: [
+                    // ✅ 下拉刷新
+                    CupertinoSliverRefreshControl(
+                      onRefresh: _onRefresh,
+                    ),
                     // SliverAppBar：标题区域（滚动时隐藏）+ 搜索区域（始终可见）
                     SliverAppBar(
                       pinned: true,

@@ -60,6 +60,9 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
               // 2. 下载目录设置
               _buildDownloadDirSection(appState),
               
+              // 2.5 下载并发设置
+              _buildDownloadConcurrencySection(appState),
+              
               // 3. 浏览设置
               _buildBrowseSection(appState),
               
@@ -297,6 +300,140 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('目录路径: $path')),
+    );
+  }
+
+  /// 2.5 下载并发设置区域
+  Widget _buildDownloadConcurrencySection(AppState appState) {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.download, size: 20, color: Colors.teal),
+                SizedBox(width: 8),
+                Text('下载设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            SizedBox(height: 12),
+            
+            // 同时下载任务数
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('同时下载任务数', style: TextStyle(fontSize: 14)),
+                      Text('同时下载的视频数量', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Theme.of(context).colorScheme.primary),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildConcurrentButton(
+                        icon: Icons.remove,
+                        onTap: appState.maxConcurrentTasks > 1
+                            ? () => appState.setMaxConcurrentTasks(appState.maxConcurrentTasks - 1)
+                            : null,
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          '${appState.maxConcurrentTasks}',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      _buildConcurrentButton(
+                        icon: Icons.add,
+                        onTap: appState.maxConcurrentTasks < 5
+                            ? () => appState.setMaxConcurrentTasks(appState.maxConcurrentTasks + 1)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 12),
+            Divider(),
+            
+            // TS切片并发数
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('切片并发数', style: TextStyle(fontSize: 14)),
+                      Text('单个视频TS切片同时下载数', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Theme.of(context).colorScheme.primary),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      _buildConcurrentButton(
+                        icon: Icons.remove,
+                        onTap: appState.maxConcurrentSegments > 4
+                            ? () => appState.setMaxConcurrentSegments(appState.maxConcurrentSegments - 4)
+                            : null,
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text(
+                          '${appState.maxConcurrentSegments}',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      _buildConcurrentButton(
+                        icon: Icons.add,
+                        onTap: appState.maxConcurrentSegments < 64
+                            ? () => appState.setMaxConcurrentSegments(appState.maxConcurrentSegments + 4)
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
+            Text(
+ '建议WiFi下使用32，移动数据下使用8-16',
+              style: TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  /// 构建并发数调节按钮
+  Widget _buildConcurrentButton({required IconData icon, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        child: Icon(icon, size: 18, color: onTap != null ? Theme.of(context).colorScheme.primary : Colors.grey),
+      ),
     );
   }
 

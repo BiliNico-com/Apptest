@@ -122,14 +122,8 @@ class CrawlerCore {
 
   /// 设置语言 Cookie - 必须与 Python 版本一致
   void _setLanguageCookie() {
-    final uri = Uri.parse(baseUrl);
-    final domain = uri.host;
-    
-    // 设置 language=cn_CN（注意：正确名称是 language，不是 session_language）
-    // Cookie值只包含名值对，domain和path是属性，不属于值的一部分
     _dio.options.headers['Cookie'] = 'language=cn_CN';
-    
-    Logger().logSync('Crawler', '设置语言 Cookie: language=cn_CN (domain=$domain)');
+    Logger().logSync('Crawler', '设置语言 Cookie: language=cn_CN (domain=${Uri.parse(baseUrl).host})');
   }
 
   /// 初始化数据库
@@ -1259,6 +1253,14 @@ class CrawlerCore {
       
     } catch (e) {
       onLog?.call('下载失败: $e', 'error');
+      // ✅ 清理临时目录，避免磁盘空间泄漏
+      try {
+        final tempDir = Directory('${savePath}_temp');
+        if (await tempDir.exists()) {
+          await tempDir.delete(recursive: true);
+          onLog?.call('已清理临时文件', 'info');
+        }
+      } catch (_) {}
       return false;
     }
   }
@@ -1481,6 +1483,13 @@ class CrawlerCore {
       limit: limit,
       offset: offset,
     );
+  }
+
+  /// ✅ 清空下载历史
+  Future<void> clearDownloadHistory() async {
+    final db = await _getDb();
+    if (db == null) return;
+    await db.delete('download_history');
   }
 
   // ==================== 控制方法 ====================

@@ -40,6 +40,12 @@ class AppState extends ChangeNotifier {
   // 外部播放器设置
   bool useExternalPlayer = false;
   
+  // 同时下载任务数（任务级别并发限制）
+  int maxConcurrentTasks = 2;
+  
+  // TS切片并发下载数
+  int maxConcurrentSegments = 32;
+  
   // 视频显示模式: 'grid' 大图模式, 'list' 列表模式
   String videoDisplayMode = 'grid';
 
@@ -77,6 +83,11 @@ class AppState extends ChangeNotifier {
     _crawler ??= CrawlerCore(baseUrl: currentSite!);
     // 设置调试HTML开关
     _crawler!.saveDebugHtml = saveDebugHtml;
+    // 同步TS切片并发数到 CrawlerCore
+    _crawler!.maxConcurrentDownloads = maxConcurrentSegments;
+    // 同步并发设置到 DownloadManager
+    _downloadManager.maxConcurrentTasks = maxConcurrentTasks;
+    _downloadManager.maxConcurrentSegments = maxConcurrentSegments;
     // 设置下载管理器
     if (_crawler != null && downloadDir.isNotEmpty) {
       _downloadManager.setup(_crawler!, downloadDir);
@@ -104,6 +115,8 @@ class AppState extends ChangeNotifier {
     showBackToTop = prefs.getBool('showBackToTop') ?? true;
     backToTopPosition = prefs.getString('backToTopPosition') ?? 'right';
     useExternalPlayer = prefs.getBool('useExternalPlayer') ?? false;
+    maxConcurrentTasks = prefs.getInt('maxConcurrentTasks') ?? 2;
+    maxConcurrentSegments = prefs.getInt('maxConcurrentSegments') ?? 32;
     appLockEnabled = prefs.getBool('appLockEnabled') ?? false;
     
     notifyListeners();
@@ -124,6 +137,8 @@ class AppState extends ChangeNotifier {
     await prefs.setBool('showBackToTop', showBackToTop);
     await prefs.setString('backToTopPosition', backToTopPosition);
     await prefs.setBool('useExternalPlayer', useExternalPlayer);
+    await prefs.setInt('maxConcurrentTasks', maxConcurrentTasks);
+    await prefs.setInt('maxConcurrentSegments', maxConcurrentSegments);
     await prefs.setBool('appLockEnabled', appLockEnabled);
   }
 
@@ -219,7 +234,11 @@ class AppState extends ChangeNotifier {
   // 切换站点
   void changeSite(String site) {
     currentSite = site;
-    _crawler?.changeSite(site);
+    if (_crawler != null) {
+      _crawler!.changeSite(site);
+    } else {
+      _crawler = null; // 强制下次访问时重新创建
+    }
     _saveSettings();
     notifyListeners();
   }
@@ -321,6 +340,27 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
   
+  // 设置同时下载任务数
+  void setMaxConcurrentTasks(int value) {
+    maxConcurrentTasks = value.clamp(1, 5);
+    // ✅ 同步到 DownloadManager
+    _downloadManager.maxConcurrentTasks = maxConcurrentTasks;
+    _saveSettings();
+    notifyListeners();
+  }
+  
+  // 设置TS切片并发数
+  void setMaxConcurrentSegments(int value) {
+    maxConcurrentSegments = value.clamp(1, 64);
+    // ✅ 同步到 DownloadManager 和 CrawlerCore
+    _downloadManager.maxConcurrentSegments = maxConcurrentSegments;
+    if (_crawler != null) {
+      _crawler!.maxConcurrentDownloads = maxConcurrentSegments;
+    }
+    _saveSettings();
+    notifyListeners();
+  }
+  
   // 设置视频显示模式
   void setVideoDisplayMode(String mode) {
     videoDisplayMode = mode;
@@ -364,6 +404,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _downloadManager.removeListener(_onDownloadManagerChanged);
+    _downloadManager.dispose();
     super.dispose();
   }
 }

@@ -239,6 +239,24 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         if (!appState.isSiteSelected) {
           return _buildNoSiteSelected();
         }
+        // ✅ 修复：站点切换时，检查当前选中类型是否在新站点类型列表中
+        final typeNames = _getTypeNames(appState.crawler?.siteType ?? 'original');
+        if (!typeNames.containsKey(_selectedType)) {
+          // 当前选中类型不存在于新站点，自动切回第一个
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {
+                _selectedType = typeNames.keys.first;
+                _videos.clear();
+                _selectedIds.clear();
+                _loadedPage = 0;
+                _hasMore = true;
+              });
+              _pageController.text = '1';
+              _goToPage();
+            }
+          });
+        }
         // ─── 自动加载第一页 ───
         if (_videos.isEmpty && !_isLoading && appState.crawler != null) {
           Future.microtask(() => _goToPage());

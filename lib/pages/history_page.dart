@@ -108,7 +108,17 @@ class _HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClient
     );
     
     if (confirm == true) {
-      // TODO: 清空数据库
+      // ✅ 清空数据库
+      final appState = context.read<AppState>();
+      final crawler = appState.crawler;
+      if (crawler != null) {
+        await crawler.clearDownloadHistory();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('已清空下载历史')),
+        );
+      }
       _loadHistory();
     }
   }
