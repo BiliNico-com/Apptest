@@ -119,6 +119,9 @@ class DownloadManager extends ChangeNotifier {
   Database? _db;
   bool _dbInitialized = false;
   
+  /// 外部数据库路径（用于持久化保存，卸载后不丢失）
+  String? externalDbPath;
+  
   /// 同时下载任务数上限（由设置页面控制）
   int maxConcurrentTasks = 2;
   
@@ -135,9 +138,20 @@ class DownloadManager extends ChangeNotifier {
   Future<void> _initDb() async {
     if (_dbInitialized) return;
     try {
-      final dbPath = await getDatabasesPath();
+      String dbPath;
+      if (externalDbPath != null && externalDbPath!.isNotEmpty) {
+        // 使用外部存储路径（卸载后保留）
+        final dbDir = Directory('$externalDbPath/.db');
+        if (!await dbDir.exists()) {
+          await dbDir.create(recursive: true);
+        }
+        dbPath = '${dbDir.path}/download_tasks.db';
+      } else {
+        // 使用应用私有路径（默认行为）
+        dbPath = '${await getDatabasesPath()}/download_tasks.db';
+      }
       _db = await openDatabase(
-        '$dbPath/download_tasks.db',
+        dbPath,
         onCreate: (db, version) {
           return db.execute('''
             CREATE TABLE IF NOT EXISTS download_tasks (

@@ -83,7 +83,10 @@ class AppState extends ChangeNotifier {
 
   CrawlerCore? get crawler {
     if (currentSite == null) return null;
-    _crawler ??= CrawlerCore(baseUrl: currentSite!);
+    _crawler ??= CrawlerCore(
+      baseUrl: currentSite!,
+      externalDbPath: downloadDir.isNotEmpty ? downloadDir : null,
+    );
     // 设置调试HTML开关
     _crawler!.saveDebugHtml = saveDebugHtml;
     // 同步TS切片并发数到 CrawlerCore
@@ -91,6 +94,8 @@ class AppState extends ChangeNotifier {
     // 同步并发设置到 DownloadManager
     _downloadManager.maxConcurrentTasks = maxConcurrentTasks;
     _downloadManager.maxConcurrentSegments = maxConcurrentSegments;
+    // 设置外部数据库路径
+    _downloadManager.externalDbPath = downloadDir.isNotEmpty ? downloadDir : null;
     // 设置下载管理器
     if (_crawler != null && downloadDir.isNotEmpty) {
       _downloadManager.setup(_crawler!, downloadDir);
@@ -103,6 +108,8 @@ class AppState extends ChangeNotifier {
     await _loadSettings();  // 先加载保存的设置
     await requestPermissions();
     await initDownloadDir();
+    // 设置外部数据库路径
+    _downloadManager.externalDbPath = downloadDir.isNotEmpty ? downloadDir : null;
     // 恢复未完成的下载任务
     await _downloadManager.restorePendingTasks();
   }

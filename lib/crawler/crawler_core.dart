@@ -36,11 +36,15 @@ class CrawlerCore {
   Function(String msg, String level)? onLog;
   Function(double progress, String msg)? onProgress;
   Function(int downloaded, int total)? onOverallProgress;
+  
+  // 外部数据库路径（用于持久化保存，卸载后不丢失）
+  String? externalDbPath;
 
   CrawlerCore({
     required this.baseUrl,
     this.imgBaseUrl,
     Dio? dio,
+    this.externalDbPath,
   }) : _dio = dio ?? Dio() {
     // 重要：先检测站点类型，再初始化Dio（请求头依赖站点类型）
     _detectSiteType();
@@ -130,9 +134,21 @@ class CrawlerCore {
   Future<void> _initDb() async {
     if (_dbInitialized) return;
     try {
-      final dbPath = await getDatabasesPath();
+      String dbPath;
+      if (externalDbPath != null && externalDbPath!.isNotEmpty) {
+        // 使用外部存储路径（卸载后保留）
+        final dbDir = Directory('$externalDbPath/.db');
+        if (!await dbDir.exists()) {
+          await dbDir.create(recursive: true);
+        }
+        dbPath = '${dbDir.path}/download_history.db';
+        Logger().logSync('Crawler', '使用外部数据库路径: $dbPath');
+      } else {
+        // 使用应用私有路径（默认行为）
+        dbPath = '${await getDatabasesPath()}/download_history.db';
+      }
       _db = await openDatabase(
-        '$dbPath/download_history.db',
+        dbPath,
         onCreate: (db, version) {
           return db.execute('''
             CREATE TABLE IF NOT EXISTS download_history (
