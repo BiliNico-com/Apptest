@@ -976,7 +976,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   void _showUpdateDialog(VersionInfo version) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: Row(
           children: [
             Icon(Icons.system_update, color: Colors.green),
@@ -1012,12 +1012,12 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('稍后更新'),
           ),
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               _downloadUpdate(version);
             },
             icon: Icon(Icons.download, size: 18),
@@ -1030,14 +1030,13 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   
   /// 下载更新
   Future<void> _downloadUpdate(VersionInfo version) async {
-    bool downloading = true;
     double progress = 0;
     
     // 显示下载进度对话框
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
             title: Text('正在下载更新'),
@@ -1051,10 +1050,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
             ),
             actions: [
               TextButton(
-                onPressed: () {
-                  downloading = false;
-                  Navigator.pop(context);
-                },
+                onPressed: () => Navigator.pop(dialogContext),
                 child: Text('取消'),
               ),
             ],
@@ -1066,7 +1062,6 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
     final versionService = VersionService();
     final success = await versionService.downloadAndInstall(version, (p) {
       progress = p;
-      // 更新对话框需要通过其他方式，这里简化处理
     });
     
     if (mounted) {
