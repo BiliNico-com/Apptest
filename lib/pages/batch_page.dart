@@ -39,10 +39,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   
   // 进入作者主页前的滚动位置（返回时恢复）
   double _savedScrollOffset = 0;
-  
-  // 已关注作者列表模式
-  bool _isFollowedTabMode = false;
-  List<FollowedAuthor> _followedAuthors = [];
 
   // ─── 新增：滚动折叠比例 ───
   double _collapseRatio = 0.0;
@@ -80,9 +76,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       setState(() => _showBackToTop = showBtn);
     }
     // ─── 瀑布流自动加载 ───
-    // 已关注列表模式不需要自动加载
-    if (_isFollowedTabMode) return;
-    
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoading && !_isLoadingMore) {
         // 作者主页模式
@@ -192,52 +185,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     });
   }
   
-  /// 进入已关注作者列表模式
-  void _enterFollowedTabMode() {
-    final appState = context.read<AppState>();
-    
-    // 设置返回键回调
-    appState.onWillPopCallback = () {
-      if (_isFollowedTabMode) {
-        _exitFollowedTabMode();
-        return true;
-      }
-      return false;
-    };
-    
-    // 保存滚动位置
-    _savedScrollOffset = _scrollController.offset;
-    
-    setState(() {
-      _isFollowedTabMode = true;
-      _followedAuthors = List.from(appState.followedAuthorsService.followedList);
-    });
-    
-    _scrollController.jumpTo(0);
-  }
-  
-  /// 退出已关注作者列表模式
-  void _exitFollowedTabMode() {
-    final appState = context.read<AppState>();
-    appState.onWillPopCallback = null;
-    
-    final savedOffset = _savedScrollOffset;
-    setState(() {
-      _isFollowedTabMode = false;
-      _followedAuthors.clear();
-    });
-    
-    // 恢复滚动位置
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scrollController.hasClients) {
-        final maxOffset = _scrollController.position.maxScrollExtent;
-        if (savedOffset <= maxOffset) {
-          _scrollController.jumpTo(savedOffset);
-        }
-      }
-    });
-  }
-  
   /// 加载更多作者视频
   Future<void> _loadMoreAuthorVideos() async {
     if (!_authorHasMore || _isLoading) return;
@@ -271,14 +218,8 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     final crawler = appState.crawler;
     if (crawler == null) return;
     
-    if (_isFollowedTabMode) {
-      // 已关注列表模式刷新
-      await appState.followedAuthorsService.refresh();
-      setState(() {
-        _followedAuthors = List.from(appState.followedAuthorsService.followedList);
-      });
-    } else if (_isAuthorPageMode) {
-      // ✅ 修复：作者模式下刷新作者视频
+    if (_isAuthorPageMode) {
+      // 作者模式下刷新作者视频
       setState(() {
         _authorVideos.clear();
         _selectedIds.clear();
@@ -348,17 +289,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
             }
           });
         }
-        // ─── 自动加载第一页（仅在非特殊模式下） ───
-        if (!_isFollowedTabMode && _videos.isEmpty && !_isLoading && appState.crawler != null) {
+        // ─── 自动加载第一页 ───
+        if (_videos.isEmpty && !_isLoading && appState.crawler != null) {
           Future.microtask(() => _goToPage());
         }
         return WillPopScope(
           onWillPop: () async {
-            // 已关注列表模式下拦截返回键
-            if (_isFollowedTabMode) {
-              _exitFollowedTabMode();
-              return false;  // 不退出页面
-            }
             // 作者主页模式下拦截返回键
             if (_isAuthorPageMode) {
               _exitAuthorPageMode();
@@ -397,15 +333,18 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       status: _status,
                       privacyMode: appState.privacyMode,
                       isAuthorPageMode: _isAuthorPageMode,
-                      isFollowedTabMode: _isFollowedTabMode,
                       authorName: _currentAuthorName,
-                      followedCount: appState.followedAuthorsService.followedCount,
-                      onBack: _isAuthorPageMode ? _exitAuthorPageMode : (_isFollowedTabMode ? _exitFollowedTabMode : null),
-                      onFollowedTabTap: () {
-                        if (!_isFollowedTabMode) {
-                          _enterFollowedTabMode();
+                      isFollowed: _isAuthorPageMode && appState.followedAuthorsService.followedList
+                          .any((a) => a.authorId == _currentAuthorId),
+                      onBack: _isAuthorPageMode ? _exitAuthorPageMode : null,
+                      onFollowToggle: _isAuthorPageMode ? () async {
+                        if (appState.followedAuthorsService.followedList.any((a) => a.authorId == _currentAuthorId)) {
+                          await appState.followedAuthorsService.unfollow(_currentAuthorId);
+                        } else {
+                          await appState.followedAuthorsService.follow(_currentAuthorId, _currentAuthorName);
                         }
-                      },
+                        if (mounted) setState(() {});
+                      } : null,
                       onTypeChanged: (v) async {
                         if (v != null && v != _selectedType) {
                           setState(() {
@@ -433,19 +372,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     ),
                   ),
 
-                  // 内容区域
-                  if (_isFollowedTabMode)
-                    // 已关注作者列表
-                    SliverPadding(
-                      padding: EdgeInsets.all(8),
-                      sliver: _buildFollowedAuthorsList(appState),
-                    )
-                  else
-                    // 视频列表
-                    SliverPadding(
-                      padding: EdgeInsets.all(8),
-                      sliver: _buildSliverVideoGrid(appState),
-                    ),
+                  // 内容区域 - 视频列表
+                  SliverPadding(
+                    padding: EdgeInsets.all(8),
+                    sliver: _buildSliverVideoGrid(appState),
+                  ),
 
                   // 底部留白
                   SliverToBoxAdapter(
@@ -484,114 +415,10 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     );
   }
 
-  /// 构建已关注作者列表
-  Widget _buildFollowedAuthorsList(AppState appState) {
-    final followedList = appState.followedAuthorsService.followedList;
-    
-    if (followedList.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(height: 80),
-              Icon(Icons.favorite_border, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text('暂无关注的作者', style: TextStyle(fontSize: 18, color: Colors.grey)),
-              SizedBox(height: 8),
-              Text('点击视频中的爱心图标即可关注作者', style: TextStyle(fontSize: 14, color: Colors.grey)),
-            ],
-          ),
-        ),
-      );
-    }
-    
-    return SliverGrid(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 0.85,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => _buildFollowedAuthorItem(followedList[index], appState),
-        childCount: followedList.length,
-      ),
-    );
-  }
-
-  /// 构建单个已关注作者卡片
-  Widget _buildFollowedAuthorItem(FollowedAuthor author, AppState appState) {
-    return GestureDetector(
-      onTap: () => _enterAuthorPageMode(author.authorId, author.authorName),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 头像区域
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    color: Colors.grey[800],
-                    child: author.avatarUrl != null && author.avatarUrl!.isNotEmpty
-                        ? Image.network(
-                            author.avatarUrl!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: Icon(Icons.person, size: 48, color: Colors.grey),
-                            ),
-                          )
-                        : Center(
-                            child: Icon(Icons.person, size: 48, color: Colors.grey),
-                          ),
-                  ),
-                  // 关注状态指示
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () async {
-                        await appState.followedAuthorsService.unfollow(author.authorId);
-                        setState(() {
-                          _followedAuthors = List.from(appState.followedAuthorsService.followedList);
-                        });
-                      },
-                      child: Container(
-                        padding: EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.favorite, size: 16, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // 作者名
-            Padding(
-              padding: EdgeInsets.fromLTRB(8, 6, 8, 6),
-              child: Text(
-                author.authorName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   List<Widget> _buildOverlays(AppState appState) {
     return [
-      // 页码跳转（作者主页模式和已关注模式隐藏）
-      if (!_isAuthorPageMode && !_isFollowedTabMode) _buildBottomPageNavigation(),
+      // 页码跳转（作者主页模式隐藏）
+      if (!_isAuthorPageMode) _buildBottomPageNavigation(),
       if (_showBackToTop && appState.showBackToTop)
         Positioned(
           bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 160.0 : 80.0,
@@ -661,49 +488,21 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     }
   }
 
-  /// 构建带有关注按钮的作者行（列表模式）
+  /// 构建作者行（列表模式）- 不包含关注按钮，关注按钮在作者主页
   Widget _buildAuthorRowWithFollow(VideoInfo video, AppState appState) {
-    return FutureBuilder<bool>(
-      future: appState.followedAuthorsService.isFollowed(video.authorId!),
-      builder: (context, snapshot) {
-        final isFollowed = snapshot.data ?? false;
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () => _enterAuthorPageMode(video.authorId!, video.author!),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.person_outline, size: 14, color: Colors.blue),
-                  SizedBox(width: 2),
-                  Text(
-                    video.author!,
-                    style: TextStyle(fontSize: 12, color: Colors.blue),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(width: 4),
-            GestureDetector(
-              onTap: () async {
-                await appState.followedAuthorsService.toggleFollow(
-                  video.authorId!,
-                  video.author!,
-                  avatarUrl: video.cover,
-                );
-                // 触发UI刷新
-                if (mounted) setState(() {});
-              },
-              child: Icon(
-                isFollowed ? Icons.favorite : Icons.favorite_border,
-                size: 16,
-                color: isFollowed ? Colors.red : Colors.grey,
-              ),
-            ),
-          ],
-        );
-      },
+    return GestureDetector(
+      onTap: () => _enterAuthorPageMode(video.authorId!, video.author!),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.person_outline, size: 14, color: Colors.blue),
+          SizedBox(width: 2),
+          Text(
+            video.author!,
+            style: TextStyle(fontSize: 12, color: Colors.blue),
+          ),
+        ],
+      ),
     );
   }
 
@@ -929,48 +728,25 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     );
   }
 
-  /// 构建网格模式下的作者行（带关注按钮）
+  /// 构建网格模式下的作者行（不包含关注按钮）
   Widget _buildGridAuthorRow(VideoInfo video, AppState appState) {
-    return FutureBuilder<bool>(
-      future: appState.followedAuthorsService.isFollowed(video.authorId!),
-      builder: (context, snapshot) {
-        final isFollowed = snapshot.data ?? false;
-        return GestureDetector(
-          onTap: () => _enterAuthorPageMode(video.authorId!, video.author!),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.person_outline, size: 12, color: Colors.blue),
-                SizedBox(width: 2),
-                Text(
-                  video.author!.length > 8 ? video.author!.substring(0, 8) + '..' : video.author!,
-                  style: TextStyle(fontSize: 10, color: Colors.blue),
-                ),
-                Icon(Icons.chevron_right, size: 12, color: Colors.blue),
-                SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () async {
-                    await appState.followedAuthorsService.toggleFollow(
-                      video.authorId!,
-                      video.author!,
-                      avatarUrl: video.cover,
-                    );
-                    // 触发UI刷新
-                    if (mounted) setState(() {});
-                  },
-                  child: Icon(
-                    isFollowed ? Icons.favorite : Icons.favorite_border,
-                    size: 14,
-                    color: isFollowed ? Colors.red : Colors.grey,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () => _enterAuthorPageMode(video.authorId!, video.author!),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_outline, size: 12, color: Colors.blue),
+            SizedBox(width: 2),
+            Text(
+              video.author!.length > 8 ? video.author!.substring(0, 8) + '..' : video.author!,
+              style: TextStyle(fontSize: 10, color: Colors.blue),
             ),
-          ),
-        );
-      },
+            Icon(Icons.chevron_right, size: 12, color: Colors.blue),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1220,11 +996,10 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
   final String status;
   final bool privacyMode;
   final bool isAuthorPageMode;
-  final bool isFollowedTabMode;
   final String authorName;
-  final int followedCount;
+  final bool isFollowed;
   final VoidCallback? onBack;
-  final VoidCallback? onFollowedTabTap;
+  final VoidCallback? onFollowToggle;
   final ValueChanged<String?> onTypeChanged;
   final VoidCallback onPrivacyToggle;
   final VoidCallback onSelectAll;
@@ -1242,11 +1017,10 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.status,
     required this.privacyMode,
     this.isAuthorPageMode = false,
-    this.isFollowedTabMode = false,
     this.authorName = '',
-    this.followedCount = 0,
+    this.isFollowed = false,
     this.onBack,
-    this.onFollowedTabTap,
+    this.onFollowToggle,
     required this.onTypeChanged,
     required this.onPrivacyToggle,
     required this.onSelectAll,
@@ -1260,10 +1034,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext ctx, double shrinkOffset, bool overlapsContent) {
     final isDark = Theme.of(ctx).brightness == Brightness.dark;
-    // ✅ 修复：作者模式下显示作者名称，已关注模式显示关注列表
-    final displayTitle = isAuthorPageMode 
-        ? '作者: $authorName' 
-        : (isFollowedTabMode ? '已关注' : '批量爬取');
+    // 作者模式下显示作者名称
+    final displayTitle = isAuthorPageMode ? '作者: $authorName' : '批量爬取';
     // 主题适配颜色
     final bgColor = isDark ? Colors.black.withOpacity(0.75) : Colors.white.withOpacity(0.9);
     final textColor = isDark ? Colors.white : Colors.black87;
@@ -1311,16 +1083,55 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                               ),
                             ),
                           )
-                        // 收起时：作者模式显示作者名，已关注模式显示标题，非特殊模式显示下拉选择器
-                        : (isAuthorPageMode || isFollowedTabMode)
+                        // 收起时：作者模式显示作者名+关注按钮，非作者模式显示下拉选择器
+                        : isAuthorPageMode
                             ? Expanded(
-                                child: Text(
-                                  displayTitle,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      displayTitle,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    // 关注按钮
+                                    if (onFollowToggle != null)
+                                      GestureDetector(
+                                        onTap: onFollowToggle,
+                                        child: Container(
+                                          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isFollowed ? Colors.red.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: isFollowed ? Colors.red : Colors.blue,
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                isFollowed ? Icons.favorite : Icons.favorite_border,
+                                                size: 14,
+                                                color: isFollowed ? Colors.red : Colors.blue,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                isFollowed ? '已关注' : '关注',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: isFollowed ? Colors.red : Colors.blue,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               )
                             : _buildTypeChip(ctx, isDark),
@@ -1339,75 +1150,19 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                   child: Text(
                     isAuthorPageMode 
                         ? '已加载 $videoCount 个视频 (作者主页)' 
-                        : (isFollowedTabMode 
-                            ? '已关注 $followedCount 位作者' 
-                            : '已加载 $videoCount 个视频'),
+                        : '已加载 $videoCount 个视频',
                     style: TextStyle(fontSize: 12, color: subTextColor),
                   ),
                 ),
               
-              // ── 第三行：下拉选择器和已关注按钮（展开时显示，非特殊模式下显示）──
-              if (collapseRatio < 0.5 && !isAuthorPageMode && !isFollowedTabMode)
+              // ── 第三行：下拉选择器（展开时显示，非作者模式下显示）──
+              if (collapseRatio < 0.5 && !isAuthorPageMode)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildTypeChip(ctx, isDark)),
-                      const SizedBox(width: 8),
-                      _buildFollowedTabChip(ctx, isDark),
-                    ],
-                  ),
+                  child: _buildTypeChip(ctx, isDark),
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  /// 构建已关注tab按钮
-  Widget _buildFollowedTabChip(BuildContext ctx, bool isDark) {
-    final bgColor = isDark ? const Color(0xFF252525) : Colors.white;
-    return GestureDetector(
-      onTap: onFollowedTabTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isFollowedTabMode 
-              ? Colors.red.withOpacity(0.2)
-              : (isDark ? const Color(0xFF252525) : Colors.white.withOpacity(0.95)),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isFollowedTabMode 
-                ? Colors.red.withOpacity(0.5)
-                : (isDark ? const Color(0xFF333333) : Colors.grey[300]!),
-            width: 0.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.withOpacity(isFollowedTabMode ? 0.2 : 0.1),
-              blurRadius: 8,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isFollowedTabMode ? Icons.favorite : Icons.favorite_border,
-              size: 16, 
-              color: isFollowedTabMode ? Colors.red : Colors.red,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '已关注${followedCount > 0 ? "($followedCount)" : ""}',
-              style: TextStyle(
-                fontSize: 12, 
-                color: isFollowedTabMode ? Colors.red : (isDark ? Colors.grey[300] : Colors.black87),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1556,7 +1311,6 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
       old.status != status ||
       old.privacyMode != privacyMode ||
       old.isAuthorPageMode != isAuthorPageMode ||
-      old.isFollowedTabMode != isFollowedTabMode ||
       old.authorName != authorName ||
-      old.followedCount != followedCount;
+      old.isFollowed != isFollowed;
 }

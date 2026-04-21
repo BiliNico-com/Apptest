@@ -4,6 +4,7 @@ import 'batch_page.dart';
 import 'search_page.dart';
 import 'download_page.dart';
 import 'settings_page.dart';
+import 'followed_page.dart';
 import '../services/app_state.dart';
 import '../utils/logger.dart';
 
@@ -22,10 +23,11 @@ class _MainPageState extends State<MainPage> {
   DateTime? _lastPressedTime;
   static const _exitTimeout = Duration(seconds: 2);
   
-  final _pageNames = ['批量爬取', '搜索', '下载', '设置'];
+  final _pageNames = ['批量爬取', '搜索', '已关注', '下载', '设置'];
   final _pages = const [
     BatchPage(),
     SearchPage(),
+    FollowedPage(),
     DownloadPage(),
     SettingsPage(),
   ];
@@ -132,6 +134,11 @@ class _MainPageState extends State<MainPage> {
               icon: Icon(Icons.search_rounded),
               selectedIcon: Icon(Icons.search),
               label: '搜索',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.favorite_border_rounded),
+              selectedIcon: Icon(Icons.favorite),
+              label: '已关注',
             ),
             NavigationDestination(
               icon: Icon(Icons.history_rounded),
