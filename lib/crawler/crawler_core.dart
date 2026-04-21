@@ -359,16 +359,20 @@ class CrawlerCore {
         }
       }
       
-      // 格式3: 作者：xxx（直接文本）
+      // 格式3: 作者：xxx（直接文本，跳过HTML标签）
       if (author == null || author.isEmpty) {
-        final textMatch = RegExp(r'作者[：:]\s*([^<\n\r]{2,20})').firstMatch(wellContent);
+        final textMatch = RegExp(r'作者[：:]\s*(?:</?[^>]+>\s*)*([^<\n\r]+)').firstMatch(wellContent);
         if (textMatch != null) {
           author = textMatch.group(1)?.trim();
         }
       }
       
-      // 清理作者名（去掉特殊字符）
+      // 清理作者名（去掉HTML标签和特殊字符）
       if (author != null) {
+        // ✅ 修复：先剥离HTML标签，防止 </span> 等标签残留
+        author = author.replaceAll(RegExp(r'<[^>]*>'), '');
+        author = author.replaceAll('&nbsp;', '');
+        author = author.replaceAll(RegExp(r'&[a-z]+;'), '');
         author = author.replaceAll(RegExp(r'[\s　]+'), ' ').trim();
         if (author.isEmpty) author = null;
       }
@@ -413,6 +417,46 @@ class CrawlerCore {
     return videos;
   }
   
+  /// ✅ 新增：平衡 div 计数法提取指定 class 的 div 完整内容
+  /// 解决正则懒惰匹配无法正确捕获嵌套 div 完整内容的问题
+  static List<String> _extractBalancedDivContents(String html, String className) {
+    final results = <String>[];
+    final openPattern = RegExp(
+      '<div[^>]*class="[^"]*$className[^"]*"[^>]*>',
+      caseSensitive: false,
+    );
+    
+    for (final openMatch in openPattern.allMatches(html)) {
+      int start = openMatch.end;
+      int depth = 1;
+      int pos = start;
+      final lowerHtml = html.toLowerCase();
+      
+      while (pos < lowerHtml.length && depth > 0) {
+        final nextOpen = lowerHtml.indexOf('<div', pos);
+        final nextClose = lowerHtml.indexOf('</div>', pos);
+        
+        if (nextClose == -1) break;
+        
+        if (nextOpen != -1 && nextOpen < nextClose) {
+          // 确认是真正的 div 开标签（后面跟空格或 >）
+          final charAfter = nextOpen + 4 < html.length ? html[nextOpen + 4] : '';
+          if (charAfter == ' ' || charAfter == '>' || charAfter == '\n' || charAfter == '\r') {
+            depth++;
+          }
+          pos = nextOpen + 1;
+        } else {
+          depth--;
+          if (depth == 0) {
+            results.add(html.substring(start, nextClose));
+          }
+          pos = nextClose + 6;
+        }
+      }
+    }
+    return results;
+  }
+
   /// 解析视频列表 HTML - original CMS（ml0987/hsex 风格）
   /// 严格参照 Python 版本 _extract_search_results
   List<VideoInfo> _parseVideoListOriginal(String html) {
@@ -427,14 +471,10 @@ class CrawlerCore {
     //   <div class="caption title">标题</div>
     //   <div class="info"><p>&nbsp;&nbsp;<a href="user.htm?author=xxx">作者名</a></p></div>
     // </div>
-    // ✅ 修复：匹配到下一个 </div> 后再找一个 </div>，确保包含 info 部分
-    final containerPattern = RegExp(
-      r'<div[^>]*class="[^"]*thumbnail[^"]*"[^>]*>([\s\S]*?)</div>\s*(?:</div>[\s\n]*)*</div>',
-      caseSensitive: false,
-    );
+    // ✅ 修复：使用平衡 div 计数法替代正则，确保完整捕获包括 info 区域
+    final containers = _extractBalancedDivContents(html, 'thumbnail');
     
-    for (final containerMatch in containerPattern.allMatches(html)) {
-      final container = containerMatch.group(1)!;
+    for (final container in containers) {
       
       // 提取视频链接和ID
       final videoLinkMatch = RegExp(r'href="(video-(\d+)\.htm)"').firstMatch(container);
@@ -498,9 +538,9 @@ class CrawlerCore {
         author = authorMatch.group(2)?.replaceAll('&nbsp;', '').replaceAll(RegExp(r'&[a-z]+;'), '').trim();
       }
       
-      // 格式2: 纯文本作者 作者：xxx
+      // 格式2: 纯文本作者 作者：xxx（跳过HTML标签）
       if (author == null || author.isEmpty) {
-        final textMatch = RegExp(r'作者[：:]\s*([^<\n\r]{2,20})').firstMatch(container);
+        final textMatch = RegExp(r'作者[：:]\s*(?:</?[^>]+>\s*)*([^<\n\r]+)').firstMatch(container);
         if (textMatch != null) {
           author = textMatch.group(1)?.trim();
         }
@@ -508,6 +548,8 @@ class CrawlerCore {
       
       // 清理作者名
       if (author != null) {
+        // ✅ 修复：先剥离HTML标签，防止标签残留
+        author = author.replaceAll(RegExp(r'<[^>]*>'), '');
         author = author.replaceAll(RegExp(r'[\s　]+'), ' ').trim();
         if (author.isEmpty) author = null;
       }

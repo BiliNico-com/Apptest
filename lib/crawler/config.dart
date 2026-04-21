@@ -197,8 +197,9 @@ class CrawlerConfig {
   /// - 作者:xxx
   /// - 作者：xxx
   /// - <span>作者</span>：xxx
+  /// ✅ 修复：跳过作者冒号后的HTML标签（如</span>），正确捕获作者名
   static final RegExp authorPattern = RegExp(
-    r'作者[：:][\s\S]{0,20}?([^<\n\r]{2,20})',
+    r'作者[：:]\s*(?:</?[^>]+>\s*)*([^<\n\r]+)',
   );
   
   /// 作者提取 - original 风格
