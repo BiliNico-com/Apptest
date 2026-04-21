@@ -14,11 +14,12 @@ subprojects {
 }
 
 // 为所有子项目添加 core-ktx 依赖，修复 screen_brightness_android 的 toUri 错误
-subprojects { subproject ->
-    if (subproject.name != 'app') {
-        subproject.android {
-            dependencies {
-                implementation "androidx.core:core-ktx:1.12.0"
+gradle.projectsLoaded {
+    rootProject.subprojects { subproject ->
+        subproject.plugins.whenPluginAdded { plugin ->
+            if (plugin.class.name == 'com.android.build.gradle.LibraryPlugin' ||
+                plugin.class.name == 'com.android.build.gradle.AppPlugin') {
+                subproject.dependencies.add('implementation', 'androidx.core:core-ktx:1.12.0')
             }
         }
     }
