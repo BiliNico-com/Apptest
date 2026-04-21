@@ -27,6 +27,14 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   double _progress = 0.0;
   String _progressText = '';
   int _totalVideos = 0;
+  
+  // 作者主页模式
+  bool _isAuthorPageMode = false;
+  String _currentAuthorId = '';
+  String _currentAuthorName = '';
+  List<VideoInfo> _authorVideos = [];
+  int _authorCurrentPage = 0;
+  bool _authorHasMore = true;
 
   // ─── 新增：滚动折叠比例 ───
   double _collapseRatio = 0.0;
@@ -65,8 +73,15 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     }
     // ─── 瀑布流自动加载 ───
     if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && !_isLoadingMore && _hasMore && _videos.isNotEmpty) {
-        _loadMore();
+      if (!_isLoading && !_isLoadingMore) {
+        // 作者主页模式
+        if (_isAuthorPageMode && _authorHasMore && _authorVideos.isNotEmpty) {
+          _loadMoreAuthorVideos();
+        }
+        // 普通模式
+        else if (!_isAuthorPageMode && _hasMore && _videos.isNotEmpty) {
+          _loadMore();
+        }
       }
     }
     // ─── 折叠比例计算 ───
@@ -106,6 +121,61 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
 
   void _scrollToTop() {
     _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
+  }
+  
+  /// 进入作者主页模式
+  Future<void> _enterAuthorPageMode(String authorId, String authorName) async {
+    final appState = context.read<AppState>();
+    final crawler = appState.crawler;
+    if (crawler == null) return;
+    
+    setState(() {
+      _isAuthorPageMode = true;
+      _currentAuthorId = authorId;
+      _currentAuthorName = authorName;
+      _authorVideos.clear();
+      _authorCurrentPage = 0;
+      _authorHasMore = true;
+    });
+    
+    await _loadMoreAuthorVideos();
+  }
+  
+  /// 退出作者主页模式
+  void _exitAuthorPageMode() {
+    setState(() {
+      _isAuthorPageMode = false;
+      _authorVideos.clear();
+      _currentAuthorId = '';
+      _currentAuthorName = '';
+    });
+  }
+  
+  /// 加载更多作者视频
+  Future<void> _loadMoreAuthorVideos() async {
+    if (!_authorHasMore || _isLoading) return;
+    
+    final appState = context.read<AppState>();
+    final crawler = appState.crawler;
+    if (crawler == null) return;
+    
+    setState(() => _isLoading = true);
+    _authorCurrentPage++;
+    
+    final newVideos = await crawler.getAuthorVideos(_currentAuthorId, page: _authorCurrentPage);
+    
+    if (newVideos.isEmpty) {
+      setState(() {
+        _authorHasMore = false;
+        _isLoading = false;
+      });
+    } else {
+      setState(() {
+        _authorVideos.addAll(newVideos);
+        _isLoading = false;
+        if (newVideos.length < 20) _authorHasMore = false;
+      });
+    }
   }
   
   /// 下拉刷新（只在顶部时触发）
@@ -328,6 +398,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
 
   Widget _buildVideoListItem(VideoInfo video, AppState appState) {
     final isSelected = _selectedIds.contains(video.id);
+    final hasAuthor = video.author != null && video.author!.isNotEmpty &&
+                      video.authorId != null && video.authorId!.isNotEmpty;
+    
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -344,6 +417,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
           padding: EdgeInsets.all(12),
           child: Row(
             children: [
+              // 封面图
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
@@ -366,29 +440,57 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         ),
                       if (isSelected)
                         Positioned(top: 4, left: 4, child: Icon(Icons.check_circle, color: Colors.blue, size: 20)),
-                      Positioned(
-                        right: 4,
-                        bottom: 4,
-                        child: Container(
-                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)),
-                          child: Text(video.duration ?? '', style: TextStyle(color: Colors.white, fontSize: 10)),
+                      // 时长标签
+                      if (video.duration != null)
+                        Positioned(
+                          right: 4,
+                          bottom: 4,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)),
+                            child: Text(video.duration!, style: TextStyle(color: Colors.white, fontSize: 10)),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
               ),
               SizedBox(width: 12),
+              // 标题和作者
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(video.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 14)),
-                    if (video.author != null) ...[
-                      SizedBox(height: 4),
-                      Text(video.author!, style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
+                    SizedBox(height: 4),
+                    // 作者（有 authorId 可点击跳转，否则只显示）
+                    if (video.author != null && video.author!.isNotEmpty)
+                      video.authorId != null && video.authorId!.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () => _enterAuthorPageMode(video.authorId!, video.author!),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.person_outline, size: 14, color: Colors.blue),
+                                SizedBox(width: 2),
+                                Text(
+                                  video.author!,
+                                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person_outline, size: 14, color: Colors.grey),
+                              SizedBox(width: 2),
+                              Text(
+                                video.author!,
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
                   ],
                 ),
               ),
@@ -401,6 +503,9 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
 
   Widget _buildVideoGridItem(VideoInfo video, AppState appState) {
     final isSelected = _selectedIds.contains(video.id);
+    final hasAuthor = video.author != null && video.author!.isNotEmpty &&
+                      video.authorId != null && video.authorId!.isNotEmpty;
+    
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -417,6 +522,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 封面图区域
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
@@ -442,33 +548,84 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         ],
                       ),
                     ),
-                  Positioned(
-                    right: 4,
-                    bottom: 4,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)),
-                      child: Text(video.duration ?? '', style: TextStyle(color: Colors.white, fontSize: 10)),
+                  // 时长标签（右下角）
+                  if (video.duration != null)
+                    Positioned(
+                      right: 4,
+                      bottom: 4,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(4)),
+                        child: Text(video.duration!, style: TextStyle(color: Colors.white, fontSize: 10)),
+                      ),
                     ),
-                  ),
+                  // 作者标签（左下角）
+                  if (video.author != null && video.author!.isNotEmpty)
+                    Positioned(
+                      left: 4,
+                      bottom: 4,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.6), 
+                          borderRadius: BorderRadius.circular(4)
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.person, size: 10, color: Colors.white70),
+                            SizedBox(width: 2),
+                            Text(
+                              video.author!.length > 8 ? video.author!.substring(0, 8) + '...' : video.author!,
+                              style: TextStyle(color: Colors.white, fontSize: 9),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  // 选中标记
                   if (isSelected)
                     Positioned(top: 4, right: 4, child: Icon(Icons.check_circle, color: Colors.blue)),
                 ],
               ),
             ),
+            // 标题区域
             Padding(
-              padding: EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(video.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12)),
-                  if (video.author != null) ...[
-                    SizedBox(height: 2),
-                    Text(video.author!, style: TextStyle(fontSize: 10, color: Colors.grey)),
-                  ],
-                ],
-              ),
+              padding: EdgeInsets.fromLTRB(8, 8, 8, 4),
+              child: Text(video.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12)),
             ),
+            // 作者（底部，有 authorId 可点击）
+            if (video.author != null && video.author!.isNotEmpty)
+              video.authorId != null && video.authorId!.isNotEmpty
+                ? GestureDetector(
+                    onTap: () => _enterAuthorPageMode(video.authorId!, video.author!),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.person_outline, size: 12, color: Colors.blue),
+                          SizedBox(width: 2),
+                          Text(
+                            video.author!,
+                            style: TextStyle(fontSize: 10, color: Colors.blue),
+                          ),
+                          Icon(Icons.chevron_right, size: 12, color: Colors.blue),
+                        ],
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_outline, size: 12, color: Colors.grey),
+                        SizedBox(width: 2),
+                        Text(video.author!, style: TextStyle(fontSize: 10, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
           ],
         ),
       ),

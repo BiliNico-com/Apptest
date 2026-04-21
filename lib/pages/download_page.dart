@@ -20,6 +20,8 @@ class DownloadPage extends StatefulWidget {
 class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   late TabController _tabController;
   Set<String> _selectedIds = {};  // 已选择的任务ID
+  bool _isCompletedSelectMode = false;  // 已下载tab的选择模式
+  bool _isSelectMode = false;     // 选择模式（已下载tab）
   
   @override
   bool get wantKeepAlive => true;
@@ -780,18 +782,19 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
                   ? Image.network(task.video.cover!, width: 60, height: 45, fit: BoxFit.cover)
                   : Container(width: 60, height: 45, color: Colors.grey[300], child: Icon(Icons.video_file, size: 20)),
               ),
-              // 选中标记（左上角）
-              if (selected)
+              // 选择模式下显示勾选框
+              if (_isCompletedSelectMode)
                 Positioned(
                   top: 0,
                   left: 0,
                   child: Container(
                     padding: EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: Colors.blue,
+                      color: selected ? Colors.blue : Colors.white,
                       shape: BoxShape.circle,
+                      border: Border.all(color: selected ? Colors.blue : Colors.grey, width: 2),
                     ),
-                    child: Icon(Icons.check, size: 12, color: Colors.white),
+                    child: Icon(selected ? Icons.check : null, size: 12, color: Colors.white),
                   ),
                 ),
             ],
@@ -805,23 +808,23 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
             '下载于 ${_formatTime(task.endTime)}',
             style: TextStyle(fontSize: 12),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 播放按钮
-              IconButton(
-                icon: Icon(Icons.play_circle, color: Colors.green),
-                onPressed: () => _playVideo(task, appState),
-                tooltip: '播放',
+          trailing: _isCompletedSelectMode 
+            ? null 
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.play_circle, color: Colors.green),
+                    onPressed: () => _playVideo(task, appState),
+                    tooltip: '播放',
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.share, color: Colors.blue),
+                    onPressed: () => _shareVideo(task),
+                    tooltip: '分享',
+                  ),
+                ],
               ),
-              // 分享按钮
-              IconButton(
-                icon: Icon(Icons.share, color: Colors.blue),
-                onPressed: () => _shareVideo(task),
-                tooltip: '分享',
-              ),
-            ],
-          ),
         ),
       ),
     );
