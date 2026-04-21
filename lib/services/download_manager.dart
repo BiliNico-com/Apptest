@@ -666,12 +666,53 @@ class DownloadManager extends ChangeNotifier {
         }
       }
       
+      // 同时从 download_history.db 恢复已完成的任务
+      await _restoreCompletedFromHistory();
+      
       if (_tasks.isNotEmpty) {
         notifyListeners();
         await logger.log('Download', '从数据库恢复了 ${_tasks.length} 个下载任务');
       }
     } catch (e) {
       Logger().log('Download', '恢复任务失败: $e');
+    }
+  }
+  
+  /// 从 download_history.db 恢复已完成的任务
+  Future<void> _restoreCompletedFromHistory() async {
+    if (_crawler == null) return;
+    
+    try {
+      final history = await _crawler!.getDownloadHistory(limit: 1000);
+      int restoredCount = 0;
+      
+      for (final record in history) {
+        final videoId = record['video_id'] as String?;
+        if (videoId == null || _taskMap.containsKey(videoId)) continue;
+        
+        final video = VideoInfo(
+          id: videoId,
+          url: record['url'] ?? '',
+          title: record['title'] ?? '',
+        );
+        
+        final task = DownloadTask(id: video.id, video: video);
+        task.status = DownloadStatus.completed;
+        task.filePath = record['file_path'];
+        if (record['download_time'] != null) {
+          task.startTime = DateTime.parse(record['download_time']);
+        }
+        
+        _tasks.add(task);
+        _taskMap[video.id] = task;
+        restoredCount++;
+      }
+      
+      if (restoredCount > 0) {
+        await logger.log('Download', '从历史记录恢复了 $restoredCount 个已完成任务');
+      }
+    } catch (e) {
+      Logger().log('Download', '从历史记录恢复失败: $e');
     }
   }
 }

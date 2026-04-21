@@ -532,27 +532,43 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
         final task = appState.downloadManager.getTask(id);
         
         // 删除本地文件
-        if (shouldDeleteFile && task != null && task.filePath != null && task.filePath!.isNotEmpty) {
-          try {
-            final file = File(task.filePath!);
-            if (await file.exists()) {
-              await file.delete();
+        if (shouldDeleteFile) {
+          // 优先从任务获取 filePath，否则从历史数据库获取
+          String? filePath = task?.filePath;
+          if (filePath == null && appState.crawler != null) {
+            try {
+              final history = await appState.crawler!.getDownloadHistory(limit: 1000);
+              final record = history.firstWhere((h) => h['video_id'] == id, orElse: () => <String, dynamic>{});
+              filePath = record['file_path'] as String?;
+            } catch (e) {
+              print('获取历史记录失败: $e');
             }
-          } catch (e) {
-            // 忽略删除文件错误
+          }
+          
+          if (filePath != null && filePath.isNotEmpty) {
+            try {
+              final file = File(filePath);
+              if (await file.exists()) {
+                await file.delete();
+                print('已删除文件: $filePath');
+              }
+            } catch (e) {
+              print('删除文件失败: $e');
+            }
           }
         }
         
-        // 删除历史记录
+        // 从 download_history.db 删除历史记录
         if (appState.crawler != null) {
           try {
             await appState.crawler!.deleteDownloadHistory(id);
+            print('已从 download_history.db 删除: $id');
           } catch (e) {
-            // 忽略删除历史记录错误
+            print('删除历史记录失败: $e');
           }
         }
         
-        // 删除任务（会触发 notifyListeners 更新 UI）
+        // 从 download_tasks.db 删除任务
         appState.downloadManager.cancelTask(id);
         deletedCount++;
       }
