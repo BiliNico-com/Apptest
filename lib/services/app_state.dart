@@ -8,6 +8,7 @@ import '../crawler/crawler_core.dart';
 import '../models/video_info.dart';
 import '../utils/logger.dart';
 import 'download_manager.dart';
+import 'followed_authors_service.dart';
 
 class AppState extends ChangeNotifier {
   // 初始化标志（公共变量，供 main.dart 访问）
@@ -71,6 +72,9 @@ class AppState extends ChangeNotifier {
   
   DownloadManager get downloadManager => _downloadManager;
   
+  // 关注作者服务
+  FollowedAuthorsService get followedAuthorsService => FollowedAuthorsService.instance;
+  
   AppState() {
     // 监听下载管理器的变化并转发通知
     _downloadManager = DownloadManager()..addListener(_onDownloadManagerChanged);
@@ -110,6 +114,8 @@ class AppState extends ChangeNotifier {
     await initDownloadDir();
     // 设置外部数据库路径
     _downloadManager.externalDbPath = downloadDir.isNotEmpty ? downloadDir : null;
+    // 设置关注作者服务的外部数据库路径
+    followedAuthorsService.setExternalDbPath(downloadDir.isNotEmpty ? downloadDir : null);
     // 恢复未完成的下载任务
     await _downloadManager.restorePendingTasks();
   }
