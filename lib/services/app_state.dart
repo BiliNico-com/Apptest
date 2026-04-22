@@ -424,9 +424,9 @@ class AppState extends ChangeNotifier {
   }
   
   // 切换隐私模式
-  void togglePrivacyMode() {
+  Future<void> togglePrivacyMode() async {
     privacyMode = !privacyMode;
-    _saveSettings();
+    await _saveSettings();
     notifyListeners();
   }
   
