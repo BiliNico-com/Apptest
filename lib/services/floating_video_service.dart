@@ -48,18 +48,24 @@ class FloatingVideoService {
     required String title,
   }) async {
     try {
+      debugPrint('[FloatingVideo] 开始启动悬浮窗, videoPath: $videoPath');
+      
       // 检查权限
       if (!await isPermissionGranted()) {
+        debugPrint('[FloatingVideo] 悬浮窗权限未授权，请求中...');
         final granted = await requestPermission();
         if (!granted) {
+          debugPrint('[FloatingVideo] 悬浮窗权限被拒绝');
           return false;
         }
       }
       
+      debugPrint('[FloatingVideo] 悬浮窗权限已授权');
       _currentVideoPath = videoPath;
       _currentTitle = title;
       
       // 显示悬浮窗 - 使用正确的命名参数
+      debugPrint('[FloatingVideo] 调用 showOverlay...');
       await FlutterOverlayWindow.showOverlay(
         height: 180,
         width: 280,
@@ -72,6 +78,7 @@ class FloatingVideoService {
       );
       
       _isFloating = true;
+      debugPrint('[FloatingVideo] showOverlay 调用成功');
       
       // 发送视频信息到悬浮窗
       await Future.delayed(Duration(milliseconds: 500));
@@ -79,7 +86,7 @@ class FloatingVideoService {
       
       return true;
     } catch (e) {
-      debugPrint('启动悬浮窗失败: $e');
+      debugPrint('[FloatingVideo] 启动悬浮窗失败: $e');
       return false;
     }
   }

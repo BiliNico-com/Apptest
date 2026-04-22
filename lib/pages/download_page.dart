@@ -1217,6 +1217,14 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    // 从PiP模式恢复时重置状态并显示控件
+    if (state == AppLifecycleState.resumed && _isInPipMode) {
+      setState(() {
+        _isInPipMode = false;
+        _showControls = true;
+      });
+      _startHideControlsTimer();
+    }
     // 不在悬浮窗模式下才处理 PiP
     if (!_isInFloatingMode && state == AppLifecycleState.paused && _isPipAvailable && !_isInPipMode && _isInitialized) {
       _enterPipMode();
