@@ -928,8 +928,8 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
     
     // 无条件关闭悬浮窗，避免状态不同步导致灰屏
     try {
-      await FloatingVideoService.stopFloating();
-      await Future.delayed(Duration(milliseconds: 500));
+      FloatingVideoService.stopFloating();  // 不等待异步结果
+      await Future.delayed(Duration(milliseconds: 150));  // 减少等待时间
     } catch (e) {
       debugPrint('[DownloadPage] 关闭悬浮窗时出错: $e');
     }

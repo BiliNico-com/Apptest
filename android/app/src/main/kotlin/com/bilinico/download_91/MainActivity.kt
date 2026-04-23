@@ -61,6 +61,12 @@ class MainActivity : FlutterActivity() {
                     startService(intent)
                     result.success(true)
                 }
+                "switchVideo" -> {
+                    val path = call.argument<String>("path") ?: ""
+                    val title = call.argument<String>("title") ?: ""
+                    switchFloatingVideo(path, title)
+                    result.success(true)
+                }
                 "isFloatingRunning" -> {
                     result.success(FloatingWindowService.isRunning())
                 }
@@ -94,6 +100,18 @@ class MainActivity : FlutterActivity() {
     private fun stopNativeFloating() {
         val intent = Intent(this, FloatingWindowService::class.java).apply {
             action = FloatingWindowService.ACTION_STOP
+        }
+        startService(intent)
+    }
+
+    /**
+     * 切换悬浮窗视频
+     */
+    private fun switchFloatingVideo(path: String, title: String) {
+        val intent = Intent(this, FloatingWindowService::class.java).apply {
+            action = FloatingWindowService.ACTION_SWITCH_VIDEO
+            putExtra(FloatingWindowService.EXTRA_VIDEO_PATH, path)
+            putExtra(FloatingWindowService.EXTRA_TITLE, title)
         }
         startService(intent)
     }

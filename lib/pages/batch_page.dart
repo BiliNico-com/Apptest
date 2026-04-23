@@ -4,8 +4,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../crawler/config.dart';
 import '../models/video_info.dart';
+import '../models/download_task.dart';
 import '../services/app_state.dart';
 import '../services/followed_authors_service.dart';
+import '../services/floating_video_service.dart';
 import '../utils/logger.dart';
 
 class BatchPage extends StatefulWidget {
@@ -236,6 +238,47 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         _hasMore = true;
       });
       await _goToPage();
+    }
+  }
+
+  /// 切换悬浮窗到指定视频
+  Future<void> _switchToFloatingVideo(VideoInfo video) async {
+    try {
+      // 如果该视频有本地下载文件，直接切换
+      final appState = context.read<AppState>();
+      final downloadedTask = appState.downloadedVideos.firstWhere(
+        (task) => task.video.id == video.id,
+        orElse: () => DownloadTask(video: video),
+      );
+
+      if (downloadedTask.filePath != null && downloadedTask.filePath!.isNotEmpty) {
+        // 直接切换视频
+        await FloatingVideoService.switchVideo(
+          videoPath: downloadedTask.filePath!,
+          title: video.title,
+        );
+        debugPrint('[BatchPage] 已切换悬浮窗到: ${video.title}');
+      } else {
+        // 显示提示：需要先下载才能在悬浮窗播放
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('请先下载视频才能在悬浮窗播放'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[BatchPage] 切换悬浮窗失败: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('切换视频失败'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 
@@ -540,13 +583,19 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     
     return GestureDetector(
       onTap: () {
-        setState(() {
-          if (isSelected) {
-            _selectedIds.remove(video.id);
-          } else {
-            _selectedIds.add(video.id);
-          }
-        });
+        // 如果悬浮窗正在播放，则直接切换到该视频
+        if (FloatingVideoService.isFloating) {
+          _switchToFloatingVideo(video);
+        } else {
+          // 否则切换选择状态
+          setState(() {
+            if (isSelected) {
+              _selectedIds.remove(video.id);
+            } else {
+              _selectedIds.add(video.id);
+            }
+          });
+        }
       },
       child: Card(
         color: isSelected ? Colors.blue.withOpacity(0.2) : null,
@@ -649,13 +698,19 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     
     return GestureDetector(
       onTap: () {
-        setState(() {
-          if (isSelected) {
-            _selectedIds.remove(video.id);
-          } else {
-            _selectedIds.add(video.id);
-          }
-        });
+        // 如果悬浮窗正在播放，则直接切换到该视频
+        if (FloatingVideoService.isFloating) {
+          _switchToFloatingVideo(video);
+        } else {
+          // 否则切换选择状态
+          setState(() {
+            if (isSelected) {
+              _selectedIds.remove(video.id);
+            } else {
+              _selectedIds.add(video.id);
+            }
+          });
+        }
       },
       child: Card(
         color: isSelected ? Colors.blue.withOpacity(0.2) : null,

@@ -34,6 +34,7 @@ class FloatingWindowService : Service() {
         const val ACTION_PAUSE = "ACTION_PAUSE"
         const val ACTION_PLAY = "ACTION_PLAY"
         const val ACTION_SEEK = "ACTION_SEEK"
+        const val ACTION_SWITCH_VIDEO = "ACTION_SWITCH_VIDEO"
         const val EXTRA_VIDEO_PATH = "extra_video_path"
         const val EXTRA_TITLE = "extra_title"
         const val EXTRA_WIDTH = "extra_width"
@@ -43,6 +44,12 @@ class FloatingWindowService : Service() {
         private const val NOTIFICATION_CHANNEL_ID = "floating_window_channel"
         private const val NOTIFICATION_CHANNEL_NAME = "悬浮窗播放"
         private const val NOTIFICATION_ID = 1001
+
+        // 缩放范围常量
+        private const val MIN_WIDTH = 320
+        private const val MIN_HEIGHT = 180
+        private const val MAX_WIDTH_RATIO = 0.85f
+        private const val MAX_HEIGHT_RATIO = 0.8f
 
         var instance: FloatingWindowService? = null
             private set
@@ -67,6 +74,11 @@ class FloatingWindowService : Service() {
     private var initialTouchY = 0f
     private var isDragging = false
     private var lastTapTime = 0L
+
+    // 缩放相关
+    private var scaleDetector: ScaleGestureDetector? = null
+    private var currentScaleFactor = 1.0f
+    private var isScaling = false
 
     // 窗口参数
     private var windowWidth = 800
@@ -139,6 +151,11 @@ class FloatingWindowService : Service() {
             ACTION_SEEK -> {
                 val pos = intent.getIntExtra(EXTRA_SEEK_POS, 0)
                 seekTo(pos)
+            }
+            ACTION_SWITCH_VIDEO -> {
+                val path = intent.getStringExtra(EXTRA_VIDEO_PATH) ?: return START_NOT_STICKY
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
+                switchToVideo(path, title)
             }
         }
         return START_NOT_STICKY
@@ -231,46 +248,107 @@ class FloatingWindowService : Service() {
         controlOverlay = createControlOverlay(rootLayout)
         rootLayout.addView(controlOverlay)
 
-        // 设置触摸监听（拖拽 + 点击显示控件）
+        // 初始化缩放手势检测器
+        scaleDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                isScaling = true
+                return true
+            }
+
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                // 应用缩放因子
+                currentScaleFactor *= detector.scaleFactor
+                currentScaleFactor = currentScaleFactor.coerceIn(0.5f, 2.0f)
+
+                // 计算新的窗口尺寸
+                val baseWidth = windowWidth
+                val baseHeight = windowHeight
+                var newWidth = (baseWidth * currentScaleFactor).toInt()
+                var newHeight = (baseHeight * currentScaleFactor).toInt()
+
+                // 限制尺寸范围
+                val maxWidth = (getScreenWidth() * MAX_WIDTH_RATIO).toInt()
+                val maxHeight = (getScreenHeight() * MAX_HEIGHT_RATIO).toInt()
+
+                newWidth = newWidth.coerceIn(MIN_WIDTH, maxWidth)
+                newHeight = (newWidth * 9 / 16).coerceIn(MIN_HEIGHT, maxHeight) // 保持 16:9 比例
+
+                // 更新窗口大小
+                if (params != null && floatingView != null) {
+                    params!!.width = newWidth
+                    params!!.height = newHeight
+                    windowWidth = newWidth
+                    windowHeight = newHeight
+                    windowManager?.updateViewLayout(floatingView, params)
+                }
+
+                return true
+            }
+
+            override fun onScaleEnd(detector: ScaleGestureDetector) {
+                isScaling = false
+            }
+        })
+
+        // 设置触摸监听（拖拽 + 点击 + 双指缩放）
         rootLayout.setOnTouchListener { view, event ->
-            when (event.action) {
+            // 优先处理缩放手势
+            scaleDetector?.onTouchEvent(event)
+
+            when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     initialX = params!!.x
                     initialY = params!!.y
                     initialTouchX = event.rawX
                     initialTouchY = event.rawY
                     isDragging = false
+                    currentScaleFactor = 1.0f
+                    true
+                }
+                MotionEvent.ACTION_POINTER_DOWN -> {
+                    // 第二个手指按下，开始缩放模式
+                    isScaling = true
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - initialTouchX).toInt()
-                    val dy = (event.rawY - initialTouchY).toInt()
+                    // 只有单指时才处理拖拽
+                    if (event.pointerCount == 1 && !isScaling) {
+                        val dx = (event.rawX - initialTouchX).toInt()
+                        val dy = (event.rawY - initialTouchY).toInt()
 
-                    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                        isDragging = true
-                        params!!.x = initialX + dx
-                        params!!.y = initialY + dy
-                        windowManager?.updateViewLayout(floatingView, params)
+                        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                            isDragging = true
+                            params!!.x = initialX + dx
+                            params!!.y = initialY + dy
+                            windowManager?.updateViewLayout(floatingView, params)
+                        }
                     }
                     true
                 }
-                MotionEvent.ACTION_UP -> {
-                    if (!isDragging) {
-                        // 点击事件
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (!isScaling && !isDragging) {
+                        // 点击事件（双击关闭）
                         val now = System.currentTimeMillis()
                         if (now - lastTapTime < 300) {
-                            // 双击 → 关闭悬浮窗返回应用
                             closeAndReturnToApp()
                         } else {
-                            // 单击 → 切换控件显示
                             toggleControls()
                             lastTapTime = now
                         }
-                    } else {
+                    } else if (!isScaling && isDragging) {
                         // 拖动结束 → 边缘吸附
                         snapToEdge()
                     }
                     isDragging = false
+                    isScaling = false
+                    currentScaleFactor = 1.0f
+                    true
+                }
+                MotionEvent.ACTION_POINTER_UP -> {
+                    // 缩放模式结束
+                    if (event.pointerCount <= 2) {
+                        isScaling = false
+                    }
                     true
                 }
                 else -> false
@@ -558,6 +636,66 @@ class FloatingWindowService : Service() {
     }
 
     // ====== 关闭和清理 ======
+
+    /**
+     * 切换到新的视频（不关闭悬浮窗）
+     */
+    private fun switchToVideo(videoPath: String, title: String) {
+        // 保存当前窗口位置和大小
+        val savedX = params?.x ?: 0
+        val savedY = params?.y ?: 0
+        val savedWidth = windowWidth
+        val savedHeight = windowHeight
+
+        // 释放旧的播放器
+        releaseMediaPlayer()
+
+        // 重新初始化并播放新视频
+        try {
+            mediaPlayer = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                setDataSource(videoPath)
+                prepareAsync()
+                setOnPreparedListener { mp ->
+                    mp.start()
+                    updatePlayButton(true)
+                    startProgressUpdate()
+                    seekBar?.max = 100
+                }
+                setOnCompletionListener {
+                    it.start()
+                    updatePlayButton(true)
+                }
+                setOnErrorListener { _, _, _ ->
+                    false
+                }
+            }
+
+            // 更新当前视频路径信息
+            windowWidth = savedWidth
+            windowHeight = savedHeight
+
+            // 更新通知
+            updateNotification("正在播放: $title")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    /**
+     * 更新前台通知内容
+     */
+    private fun updateNotification(contentText: String) {
+        try {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.notify(NOTIFICATION_ID, buildNotification(contentText))
+        } catch (_: Exception) {}
+    }
 
     private fun closeAndReturnToApp() {
         // 发送消息给 Flutter 层

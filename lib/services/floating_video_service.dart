@@ -74,8 +74,8 @@ class NativeFloatingService {
       // 如果已有悬浮窗在运行，先关闭
       if (_isFloating) {
         print('[NativeFloating] 检测到已有悬浮窗运行，先关闭...');
-        await stopFloating();
-        await Future.delayed(Duration(milliseconds: 300));
+        stopFloating();  // 不等待异步结果
+        await Future.delayed(Duration(milliseconds: 100));  // 减少等待时间
       }
       
       // 检查权限
@@ -164,6 +164,32 @@ class NativeFloatingService {
       debugPrint('[NativeFloating] seek 失败: $e');
     }
   }
+
+  /// 切换到新视频（不关闭悬浮窗）
+  static Future<bool> switchVideo({
+    required String videoPath,
+    required String title,
+  }) async {
+    try {
+      print('[NativeFloating] 切换视频: $videoPath');
+      logger.logSync('NativeFloating', '切换视频: $videoPath');
+      
+      await _channel.invokeMethod('switchVideo', {
+        'path': videoPath,
+        'title': title,
+      });
+      
+      _currentVideoPath = videoPath;
+      _currentTitle = title;
+      
+      debugPrint('[NativeFloating] 视频切换成功');
+      return true;
+    } catch (e) {
+      debugPrint('[NativeFloating] 切换视频失败: $e');
+      logger.logSync('NativeFloating', '切换视频失败: $e');
+      return false;
+    }
+  }
 }
 
 // ========== 兼容别名：保持原有 API 不变 ==========
@@ -182,4 +208,6 @@ class FloatingVideoService {
   static Future<void> pause() => NativeFloatingService.pause();
   static Future<void> play() => NativeFloatingService.play();
   static Future<void> seekTo(int positionMs) => NativeFloatingService.seekTo(positionMs);
+  static Future<bool> switchVideo({required String videoPath, required String title}) =>
+      NativeFloatingService.switchVideo(videoPath: videoPath, title: title);
 }
