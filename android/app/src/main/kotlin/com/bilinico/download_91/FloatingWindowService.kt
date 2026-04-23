@@ -7,7 +7,6 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
-import android.util.Point
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -521,16 +520,6 @@ class FloatingWindowService : Service() {
     // ====== 工具方法 ======
 
     private fun getScreenWidth(): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = android.graphics.Rect()
-            windowManager?.maximumWindowMetrics?.bounds?.let { bounds }
-            bounds.width().coerceAtLeast(1080)
-        } else {
-            @Suppress("DEPRECATION")
-            val display = windowManager!!.defaultDisplay
-            @Suppress("DEPRECATION") val size = Point()
-            display.getRealSize(size)
-            size.x.coerceAtLeast(1080)
-        }
+        return resources.displayMetrics.widthPixels.coerceAtLeast(1080)
     }
 }
