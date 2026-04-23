@@ -10,6 +10,7 @@ import '../utils/logger.dart';
 import 'download_manager.dart';
 import 'followed_authors_service.dart';
 import 'version_service.dart';
+import 'floating_video_service.dart';
 
 class AppState extends ChangeNotifier {
   // 初始化标志（公共变量，供 main.dart 访问）
@@ -24,6 +25,7 @@ class AppState extends ChangeNotifier {
   // 下载目录
   String downloadDir = '';
   bool permissionGranted = false;
+  bool overlayPermissionGranted = false;
   
   // Debug模式
   bool debugMode = false;
@@ -130,6 +132,7 @@ class AppState extends ChangeNotifier {
   Future<void> init() async {
     await _loadSettings();  // 先加载保存的设置
     await requestPermissions();
+    overlayPermissionGranted = await NativeFloatingService.isPermissionGranted();
     await initDownloadDir();
     // 设置外部数据库路径
     _downloadManager.externalDbPath = downloadDir.isNotEmpty ? downloadDir : null;
@@ -225,6 +228,18 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
     return permissionGranted;
+  }
+
+  /// 检查/刷新悬浮窗权限状态（从设置页调用）
+  Future<bool> checkOverlayPermission() async {
+    overlayPermissionGranted = await NativeFloatingService.isPermissionGranted();
+    notifyListeners();
+    return overlayPermissionGranted;
+  }
+
+  /// 跳转悬浮窗权限设置页面
+  Future<void> requestOverlayPermission() async {
+    await NativeFloatingService.openSettings();
   }
 
   // 初始化下载目录

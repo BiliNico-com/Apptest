@@ -806,6 +806,23 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
                   )
                 : null,
             ),
+            // 悬浮窗权限
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                appState.overlayPermissionGranted ? Icons.check_circle : Icons.error,
+                color: appState.overlayPermissionGranted ? Colors.green : Colors.orange,
+              ),
+              title: Text('悬浮窗权限'),
+              subtitle: Text(appState.overlayPermissionGranted ? '已授权' : '未授权（悬浮播放需要）'),
+              trailing: TextButton.icon(
+                onPressed: () async {
+                  await appState.requestOverlayPermission();
+                },
+                icon: Icon(Icons.settings_outlined, size: 16),
+                label: Text(appState.overlayPermissionGranted ? '设置' : '去授权'),
+              ),
+            ),
           ],
         ),
       ),
