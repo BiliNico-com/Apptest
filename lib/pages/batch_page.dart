@@ -700,13 +700,13 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         child: Text(video.duration!, style: TextStyle(color: Colors.white, fontSize: 10)),
                       ),
                     ),
-                  // 作者标签（左下角）
-                  if (video.author != null && video.author!.isNotEmpty)
+                  // 更新日期标签（左下角）
+                  if (video.uploadDate != null && video.uploadDate!.isNotEmpty)
                     Positioned(
                       left: 4,
                       bottom: 4,
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.black.withOpacity(0.6), 
                           borderRadius: BorderRadius.circular(4)
@@ -714,16 +714,12 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.person, size: 10, color: Colors.white70),
+                            Icon(Icons.access_time, size: 10, color: Colors.white70),
                             SizedBox(width: 2),
                             Text(
-                              video.author!.length > 8 ? video.author!.substring(0, 8) + '...' : video.author!,
+                              video.uploadDate!.length > 10 ? video.uploadDate!.substring(0, 10) : video.uploadDate!,
                               style: TextStyle(color: Colors.white, fontSize: 9),
                             ),
-                            if (isFollowed) ...[
-                              SizedBox(width: 3),
-                              Text('❤️', style: TextStyle(fontSize: 8)),
-                            ],
                           ],
                         ),
                       ),
@@ -751,22 +747,6 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                         Icon(Icons.person_outline, size: 12, color: Colors.grey),
                         SizedBox(width: 2),
                         Text(video.author!, style: TextStyle(fontSize: 10, color: Colors.grey)),
-                      ],
-                    ),
-                  ),
-                // 上传时间
-                if (video.uploadDate != null && video.uploadDate!.isNotEmpty)
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(8, 0, 8, 6),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.access_time, size: 10, color: Colors.grey),
-                        SizedBox(width: 2),
-                        Text(
-                          video.uploadDate!,
-                          style: TextStyle(fontSize: 9, color: Colors.grey),
-                        ),
                       ],
                     ),
                   ),
