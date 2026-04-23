@@ -42,26 +42,32 @@ class FloatingVideoService {
     }
   }
   
-  /// 计算合适的悬浮窗尺寸
+  /// 计算合适的悬浮窗尺寸（视频分辨率的50%）
   static Future<(int width, int height)> _calculateWindowSize(String videoPath) async {
     try {
       final controller = VideoPlayerController.file(File(videoPath));
       await controller.initialize();
-      final aspectRatio = controller.value.aspectRatio;
+      
+      // 获取视频实际分辨率
+      final videoWidth = controller.value.size.width;
+      final videoHeight = controller.value.size.height;
       await controller.dispose();
       
-      // 基准高度，根据视频比例计算宽度
-      const baseHeight = 280;
-      final width = (baseHeight * aspectRatio).round();
+      // 计算窗口大小为视频分辨率的50%
+      final windowWidth = (videoWidth * 0.5).round();
+      final windowHeight = (videoHeight * 0.5).round();
       
-      // 限制最大宽度
-      final finalWidth = width.clamp(320, 480);
-      final finalHeight = baseHeight;
+      // 限制窗口大小范围
+      final finalWidth = windowWidth.clamp(180, 500);
+      final finalHeight = windowHeight.clamp(120, 350);
+      
+      print('[FloatingVideo] 视频分辨率: ${videoWidth}x$videoHeight, 窗口大小: ${finalWidth}x$finalHeight');
       
       return (finalWidth, finalHeight);
     } catch (e) {
+      print('[FloatingVideo] 计算窗口大小失败: $e');
       // 默认尺寸
-      return (360, 240);
+      return (320, 180);
     }
   }
   

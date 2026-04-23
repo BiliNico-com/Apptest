@@ -1137,6 +1137,12 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
           _startHideControlsTimer();
         }
       }
+      // 悬浮窗关闭时更新状态
+      if (event is Map && event['action'] == 'close') {
+        setState(() {
+          _isInFloatingMode = false;
+        });
+      }
     });
   }
   
@@ -1263,6 +1269,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+    
     // 从PiP模式恢复时重置状态并显示控件
     if (state == AppLifecycleState.resumed && _isInPipMode) {
       setState(() {
@@ -1271,6 +1278,23 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
       });
       _startHideControlsTimer();
     }
+    
+    // 从悬浮窗模式恢复
+    if (state == AppLifecycleState.resumed && _isInFloatingMode) {
+      // 检查悬浮窗是否已关闭
+      Future.delayed(Duration(milliseconds: 200), () async {
+        if (!FloatingVideoService.isFloating && mounted && _isInFloatingMode) {
+          // 悬浮窗已关闭，恢复播放
+          setState(() {
+            _isInFloatingMode = false;
+            _showControls = true;
+          });
+          _videoPlayerController?.play();
+          _startHideControlsTimer();
+        }
+      });
+    }
+    
     // 不在悬浮窗模式下才处理 PiP
     if (!_isInFloatingMode && state == AppLifecycleState.paused && _isPipAvailable && !_isInPipMode && _isInitialized) {
       _enterPipMode();

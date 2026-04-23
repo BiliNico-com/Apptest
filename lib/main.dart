@@ -115,12 +115,22 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
     });
   }
   
-  // 拖动调整大小
-  void _handleResizeDrag(DragUpdateDetails details, bool isRightCorner) {
-    final delta = isRightCorner ? details.delta.dx : -details.delta.dx;
-    final newWidth = (_windowWidth + delta).clamp(240.0, 600.0);
+  // 双指缩放调整大小
+  double _lastScale = 1.0;
+  
+  void _onScaleStart(ScaleStartDetails details) {
+    _lastScale = 1.0;
+  }
+  
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (details.scale == 1.0) return;
+    
+    final scaleDelta = details.scale / _lastScale;
+    _lastScale = details.scale;
+    
+    final newWidth = (_windowWidth * scaleDelta).clamp(180.0, 500.0);
     final aspectRatio = _controller?.value.aspectRatio ?? 16 / 9;
-    final newHeight = (newWidth / aspectRatio).clamp(180.0, 400.0);
+    final newHeight = (newWidth / aspectRatio).clamp(120.0, 350.0);
     
     FlutterOverlayWindow.resizeOverlay(
       newWidth.round(),
@@ -139,14 +149,16 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
     // 先暂停视频
     await _controller?.pause();
     
+    final position = _controller?.value.position.inMilliseconds ?? 0;
+    
     // 发送消息让主应用知道要恢复播放
     await FlutterOverlayWindow.shareData({
       'action': 'returnToApp',
-      'position': _controller?.value.position.inMilliseconds ?? 0,
+      'position': position,
     });
     
     // 等待消息发送
-    await Future.delayed(Duration(milliseconds: 100));
+    await Future.delayed(Duration(milliseconds: 200));
     
     // 关闭悬浮窗
     await FlutterOverlayWindow.closeOverlay();
@@ -181,6 +193,8 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
         child: GestureDetector(
           onTap: _toggleControls,
           onDoubleTap: _onDoubleTap,
+          onScaleStart: _onScaleStart,
+          onScaleUpdate: _onScaleUpdate,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -218,13 +232,13 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             GestureDetector(
                               onTap: _closeOverlay,
                               child: Container(
-                                padding: EdgeInsets.all(4),
-                                child: Icon(Icons.close, color: Colors.white, size: 20),
+                                padding: EdgeInsets.all(8),
+                                child: Icon(Icons.close, color: Colors.white, size: 24),
                               ),
                             ),
                           ],
@@ -248,10 +262,10 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
                         ),
                       ),
                       
-                      // 底部：进度条 + 角标拖动
+                      // 底部进度条
                       if (_isInitialized && _controller != null)
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -263,61 +277,9 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
                                 valueColor: AlwaysStoppedAnimation(Colors.blue),
                               ),
                               SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  // 左下角拖动手柄
-                                  GestureDetector(
-                                    onHorizontalDragUpdate: (details) => _handleResizeDrag(details, false),
-                                    child: Container(
-                                      width: 36,
-                                      height: 24,
-                                      alignment: Alignment.center,
-                                      child: Container(
-                                        width: 12,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white54,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  // 时间显示
-                                  Expanded(
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          _formatDuration(_controller!.value.position),
-                                          style: TextStyle(color: Colors.white70, fontSize: 10),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          '/ ${_formatDuration(_controller!.value.duration)}',
-                                          style: TextStyle(color: Colors.white54, fontSize: 10),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // 右下角拖动手柄
-                                  GestureDetector(
-                                    onHorizontalDragUpdate: (details) => _handleResizeDrag(details, true),
-                                    child: Container(
-                                      width: 36,
-                                      height: 24,
-                                      alignment: Alignment.center,
-                                      child: Container(
-                                        width: 12,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white54,
-                                          borderRadius: BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              Text(
+                                '${_formatDuration(_controller!.value.position)} / ${_formatDuration(_controller!.value.duration)}',
+                                style: TextStyle(color: Colors.white70, fontSize: 11),
                               ),
                             ],
                           ),
