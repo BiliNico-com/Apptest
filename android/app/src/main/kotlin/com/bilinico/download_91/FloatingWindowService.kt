@@ -16,6 +16,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.SeekBar
+import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 
@@ -56,6 +57,7 @@ class FloatingWindowService : Service() {
     private var btnClose: ImageView? = null
     private var btnPlay: ImageView? = null
     private var seekBar: SeekBar? = null
+    private var timeText: TextView? = null
 
     // 拖拽相关
     private var initialX = 0
@@ -393,6 +395,19 @@ class FloatingWindowService : Service() {
                 ).also { it.topMargin = 4 }
             }
             addView(seekBar)
+
+            // 时间显示 (XX:XX:XX / XX:XX:XX)
+            timeText = TextView(context).apply {
+                textSize = 11f
+                setTextColor(0xFFFFFFFF.toInt())
+                text = "00:00:00 / 00:00:00"
+                gravity = Gravity.CENTER
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).also { it.topMargin = 2; it.bottomMargin = 2 }
+            }
+            addView(timeText)
         }
     }
 
@@ -443,10 +458,26 @@ class FloatingWindowService : Service() {
                 val duration = mediaPlayer!!.duration
                 if (duration > 0) {
                     seekBar?.progress = (pos * 100 / duration)
+                    // 更新时间显示
+                    timeText?.text = "${formatTime(pos)} / ${formatTime(duration)}"
                 }
                 handler.postDelayed(this, 500)
             }
         }.run()
+    }
+
+    /**
+     * 格式化毫秒为 HH:MM:SS
+     */
+    private fun formatTime(ms: Int): String {
+        val totalSeconds = ms / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        return if (hours > 0)
+            String.format("%02d:%02d:%02d", hours, minutes, seconds)
+        else
+            String.format("%02d:%02d", minutes, seconds)
     }
 
     // ====== 操作方法 =======
