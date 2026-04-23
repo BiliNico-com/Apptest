@@ -7,6 +7,7 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
+import android.util.Point
 import android.view.*
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -527,7 +528,7 @@ class FloatingWindowService : Service() {
         } else {
             @Suppress("DEPRECATION")
             val display = windowManager!!.defaultDisplay
-            @Suppress("DEPRECATION") val size = android.util.Point()
+            @Suppress("DEPRECATION") val size = Point()
             display.getRealSize(size)
             size.x.coerceAtLeast(1080)
         }
