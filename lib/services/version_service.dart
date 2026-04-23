@@ -220,31 +220,24 @@ class VersionService {
       }
 
       // 解析 tag_name 为 version + buildNumber
-      // 格式: "v1.0.352" 或 "1.0.5+352"
+      // 格式: "v1.0.359" 或 "v1.0.5+359"
+      // 主版本号固定为 1.0.5，tag中最后一段大数字是 buildNumber
       String tagName = tagMatch?.group(1) ?? '';
       if (!tagName.startsWith('v')) tagName = 'v$tagName';
       
-      // 尝试提取数字作为 buildNumber
+      // 主版本号固定为 1.0.5
+      const String mainVersion = '1.0.5';
+      
+      // 提取所有数字
       final digits = RegExp(r'(\d+)').allMatches(tagName).map((m) => m.group(1)).toList();
       int buildNumber = 0;
-      String version = '0.0.0';
       
-      if (digits.length >= 3) {
-        version = '${digits[0]}.${digits[1]}.${digits[2]}';
-        buildNumber = int.parse(digits.length > 3 ? (digits.last ?? '0') : (digits[2] ?? '0'));
-      } else if (digits.length == 2) {
-        version = '1.${digits[0]}';
-        buildNumber = int.parse(digits[1] ?? '0');
-      } else if (digits.length == 1) {
-        buildNumber = int.parse(digits[0] ?? '0');
-        version = '1.0.0';
+      if (digits.isNotEmpty) {
+        // 最后一个数字是 buildNumber
+        buildNumber = int.tryParse(digits.last ?? '0') ?? 0;
       }
       
-      // 如果tag格式是 v1.0.352，最后一段就是buildNumber
-      final dotParts = tagName.replaceAll('v', '').split('.');
-      if (dotParts.length >= 3) {
-        buildNumber = int.tryParse(dotParts.last) ?? buildNumber;
-      }
+      Logger().logSync('Version', 'tag解析: $tagName → version=$mainVersion, buildNumber=$buildNumber');
       
       // 解析 release notes
       List<String>? notes;
@@ -258,7 +251,7 @@ class VersionService {
       }
 
       return VersionInfo(
-        version: version,
+        version: mainVersion,
         buildNumber: buildNumber,
         downloadUrl: downloadUrl ?? '',
         releaseDate: dateMatch?.group(1) ?? '',

@@ -153,59 +153,61 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   /// 2. 下载目录设置区域
   Widget _buildDownloadDirSection(AppState appState) {
     return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,  // 默认折叠
+          leading: Icon(Icons.folder, size: 20, color: Colors.amber),
+          title: Text('下载目录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           children: [
-            Row(
-              children: [
-                Icon(Icons.folder, size: 20, color: Colors.amber),
-                SizedBox(width: 8),
-                Text('下载目录', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      appState.downloadDir.isEmpty 
-                        ? '正在初始化...' 
-                        : appState.downloadDir,
-                      style: TextStyle(fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            appState.downloadDir.isEmpty 
+                              ? '正在初始化...' 
+                              : appState.downloadDir,
+                            style: TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _selectDownloadDirectory(appState),
+                          icon: Icon(Icons.folder_open, size: 18),
+                          label: Text('选择目录'),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openDownloadDirectory(appState.downloadDir),
+                          icon: Icon(Icons.folder_shared, size: 18),
+                          label: Text('打开目录'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _selectDownloadDirectory(appState),
-                    icon: Icon(Icons.folder_open, size: 18),
-                    label: Text('选择目录'),
-                  ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openDownloadDirectory(appState.downloadDir),
-                    icon: Icon(Icons.folder_shared, size: 18),
-                    label: Text('打开目录'),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -309,115 +311,116 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   Widget _buildDownloadConcurrencySection(AppState appState) {
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,  // 默认折叠
+          leading: Icon(Icons.download, size: 20, color: Colors.teal),
+          title: Text('下载设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           children: [
-            Row(
-              children: [
-                Icon(Icons.download, size: 20, color: Colors.teal),
-                SizedBox(width: 8),
-                Text('下载设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 12),
-            
-            // 同时下载任务数
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 同时下载任务数
+                  Row(
                     children: [
-                      Text('同时下载任务数', style: TextStyle(fontSize: 14)),
-                      Text('同时下载的视频数量', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).colorScheme.primary),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildConcurrentButton(
-                        icon: Icons.remove,
-                        onTap: appState.maxConcurrentTasks > 1
-                            ? () => appState.setMaxConcurrentTasks(appState.maxConcurrentTasks - 1)
-                            : null,
-                      ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text(
-                          '${appState.maxConcurrentTasks}',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('同时下载任务数', style: TextStyle(fontSize: 14)),
+                            Text('同时下载的视频数量', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
                         ),
                       ),
-                      _buildConcurrentButton(
-                        icon: Icons.add,
-                        onTap: appState.maxConcurrentTasks < 5
-                            ? () => appState.setMaxConcurrentTasks(appState.maxConcurrentTasks + 1)
-                            : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Divider(),
-            
-            // TS切片并发数
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('切片并发数', style: TextStyle(fontSize: 14)),
-                      Text('单个视频TS切片同时下载数', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).colorScheme.primary),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildConcurrentButton(
-                        icon: Icons.remove,
-                        onTap: appState.maxConcurrentSegments > 4
-                            ? () => appState.setMaxConcurrentSegments(appState.maxConcurrentSegments - 4)
-                            : null,
-                      ),
+                      SizedBox(width: 8),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text(
-                          '${appState.maxConcurrentSegments}',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Theme.of(context).colorScheme.primary),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildConcurrentButton(
+                              icon: Icons.remove,
+                              onTap: appState.maxConcurrentTasks > 1
+                                  ? () => appState.setMaxConcurrentTasks(appState.maxConcurrentTasks - 1)
+                                  : null,
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Text(
+                                '${appState.maxConcurrentTasks}',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            _buildConcurrentButton(
+                              icon: Icons.add,
+                              onTap: appState.maxConcurrentTasks < 5
+                                  ? () => appState.setMaxConcurrentTasks(appState.maxConcurrentTasks + 1)
+                                  : null,
+                            ),
+                          ],
                         ),
                       ),
-                      _buildConcurrentButton(
-                        icon: Icons.add,
-                        onTap: appState.maxConcurrentSegments < 64
-                            ? () => appState.setMaxConcurrentSegments(appState.maxConcurrentSegments + 4)
-                            : null,
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Divider(),
+                  
+                  // TS切片并发数
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('切片并发数', style: TextStyle(fontSize: 14)),
+                            Text('单个视频TS切片同时下载数', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Theme.of(context).colorScheme.primary),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            _buildConcurrentButton(
+                              icon: Icons.remove,
+                              onTap: appState.maxConcurrentSegments > 4
+                                  ? () => appState.setMaxConcurrentSegments(appState.maxConcurrentSegments - 4)
+                                  : null,
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Text(
+                                '${appState.maxConcurrentSegments}',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            _buildConcurrentButton(
+                              icon: Icons.add,
+                              onTap: appState.maxConcurrentSegments < 64
+                                  ? () => appState.setMaxConcurrentSegments(appState.maxConcurrentSegments + 4)
+                                  : null,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 8),
-            Text(
- '建议WiFi下使用32，移动数据下使用8-16',
-              style: TextStyle(fontSize: 11, color: Colors.grey),
+                  SizedBox(height: 8),
+                  Text(
+                    '建议WiFi下使用32，移动数据下使用8-16',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -443,98 +446,99 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   Widget _buildBrowseSection(AppState appState) {
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,  // 默认折叠
+          leading: Icon(Icons.view_module, size: 20, color: Colors.blue),
+          title: Text('浏览设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           children: [
-            Row(
-              children: [
-                Icon(Icons.view_module, size: 20, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('浏览设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 12),
-            
-            // 视频显示模式切换
-            Row(
-              children: [
-                Text('视频显示模式', style: TextStyle(fontSize: 14)),
-                Spacer(),
-                ChoiceChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 视频显示模式切换
+                  Row(
                     children: [
-                      Icon(Icons.grid_view, size: 16),
-                      SizedBox(width: 4),
-                      Text('大图'),
+                      Text('视频显示模式', style: TextStyle(fontSize: 14)),
+                      Spacer(),
+                      ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.grid_view, size: 16),
+                            SizedBox(width: 4),
+                            Text('大图'),
+                          ],
+                        ),
+                        selected: appState.videoDisplayMode == 'grid',
+                        onSelected: (selected) {
+                          if (selected) {
+                            appState.setVideoDisplayMode('grid');
+                          }
+                        },
+                      ),
+                      SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.list, size: 16),
+                            SizedBox(width: 4),
+                            Text('列表'),
+                          ],
+                        ),
+                        selected: appState.videoDisplayMode == 'list',
+                        onSelected: (selected) {
+                          if (selected) {
+                            appState.setVideoDisplayMode('list');
+                          }
+                        },
+                      ),
                     ],
                   ),
-                  selected: appState.videoDisplayMode == 'grid',
-                  onSelected: (selected) {
-                    if (selected) {
-                      appState.setVideoDisplayMode('grid');
-                    }
-                  },
-                ),
-                SizedBox(width: 8),
-                ChoiceChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.list, size: 16),
-                      SizedBox(width: 4),
-                      Text('列表'),
-                    ],
+                  Divider(),
+                  
+                  // 回顶部按钮设置
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('显示回顶部按钮'),
+                    subtitle: Text('滚动时显示快速回顶部按钮'),
+                    value: appState.showBackToTop,
+                    onChanged: (v) {
+                      appState.setShowBackToTop(v);
+                    },
                   ),
-                  selected: appState.videoDisplayMode == 'list',
-                  onSelected: (selected) {
-                    if (selected) {
-                      appState.setVideoDisplayMode('list');
-                    }
-                  },
-                ),
-              ],
-            ),
-            Divider(),
-            
-            // 回顶部按钮设置
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('显示回顶部按钮'),
-              subtitle: Text('滚动时显示快速回顶部按钮'),
-              value: appState.showBackToTop,
-              onChanged: (v) {
-                appState.setShowBackToTop(v);
-              },
-            ),
-            if (appState.showBackToTop)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('按钮位置'),
-                trailing: SegmentedButton<String>(
-                  segments: [
-                    ButtonSegment(value: 'left', label: Text('左下')),
-                    ButtonSegment(value: 'right', label: Text('右下')),
-                  ],
-                  selected: {appState.backToTopPosition},
-                  onSelectionChanged: (s) {
-                    appState.setBackToTopPosition(s.first);
-                  },
-                ),
+                  if (appState.showBackToTop)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('按钮位置'),
+                      trailing: SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(value: 'left', label: Text('左下')),
+                          ButtonSegment(value: 'right', label: Text('右下')),
+                        ],
+                        selected: {appState.backToTopPosition},
+                        onSelectionChanged: (s) {
+                          appState.setBackToTopPosition(s.first);
+                        },
+                      ),
+                    ),
+                  Divider(),
+                  
+                  // 外部播放器设置
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('使用外部播放器'),
+                    subtitle: Text('点击视频时使用系统播放器打开'),
+                    value: appState.useExternalPlayer,
+                    onChanged: (v) {
+                      appState.setExternalPlayer(v);
+                    },
+                  ),
+                ],
               ),
-            Divider(),
-            
-            // 外部播放器设置
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('使用外部播放器'),
-              subtitle: Text('点击视频时使用系统播放器打开'),
-              value: appState.useExternalPlayer,
-              onChanged: (v) {
-                appState.setExternalPlayer(v);
-              },
             ),
           ],
         ),
@@ -545,104 +549,105 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   /// 4. 主题模式设置区域
   Widget _buildThemeSection(AppState appState) {
     return Card(
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,  // 默认折叠
+          leading: Icon(Icons.palette, size: 20, color: Colors.purple),
+          title: Text('主题模式', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           children: [
-            Row(
-              children: [
-                Icon(Icons.palette, size: 20, color: Colors.purple),
-                SizedBox(width: 8),
-                Text('主题模式', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 12),
-            
-            // 跟随系统开关
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('跟随系统'),
-              subtitle: Text('自动切换日间/夜间模式'),
-              value: appState.themeMode == 2,
-              onChanged: (v) {
-                if (v) {
-                  appState.setAutoTheme();
-                } else {
-                  // 关闭跟随系统时，切换到日间模式
-                  appState.setLightMode();
-                }
-              },
-            ),
-            Divider(),
-            
-            // 主题选择（跟随系统关闭时才可操作）
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('选择主题'),
-              subtitle: Text(
-                appState.themeMode == 2 
-                    ? '当前跟随系统' 
-                    : (appState.themeMode == 0 ? '日间模式' : '夜间模式')
-              ),
-              trailing: SegmentedButton<int>(
-                segments: [
-                  ButtonSegment(
-                    value: 0,
-                    icon: Icon(Icons.light_mode, size: 18),
-                    label: Text('日'),
-                  ),
-                  ButtonSegment(
-                    value: 1,
-                    icon: Icon(Icons.dark_mode, size: 18),
-                    label: Text('夜'),
-                  ),
-                  ButtonSegment(
-                    value: 2,
-                    icon: Icon(Icons.settings_suggest, size: 18),
-                    label: Text('自动'),
-                  ),
-                ],
-                selected: {appState.themeMode},
-                onSelectionChanged: (s) {
-                  final mode = s.first;
-                  switch (mode) {
-                    case 0:
-                      appState.setLightMode();
-                      break;
-                    case 1:
-                      appState.setDarkMode();
-                      break;
-                    case 2:
-                      appState.setAutoTheme();
-                      break;
-                  }
-                },
-              ),
-            ),
-            
-            // 当前主题预览
-            SizedBox(height: 8),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    appState.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                    size: 20,
-                    color: Theme.of(context).colorScheme.primary,
+                  // 跟随系统开关
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('跟随系统'),
+                    subtitle: Text('自动切换日间/夜间模式'),
+                    value: appState.themeMode == 2,
+                    onChanged: (v) {
+                      if (v) {
+                        appState.setAutoTheme();
+                      } else {
+                        // 关闭跟随系统时，切换到日间模式
+                        appState.setLightMode();
+                      }
+                    },
                   ),
-                  SizedBox(width: 8),
-                  Text(
-                    '当前: ${appState.isDarkMode ? "夜间模式" : "日间模式"}',
-                    style: TextStyle(
-                      color: Theme.of(context).textTheme.bodyMedium?.color,
-                      fontWeight: FontWeight.w500,
+                  Divider(),
+                  
+                  // 主题选择（跟随系统关闭时才可操作）
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('选择主题'),
+                    subtitle: Text(
+                      appState.themeMode == 2 
+                          ? '当前跟随系统' 
+                          : (appState.themeMode == 0 ? '日间模式' : '夜间模式')
+                    ),
+                    trailing: SegmentedButton<int>(
+                      segments: [
+                        ButtonSegment(
+                          value: 0,
+                          icon: Icon(Icons.light_mode, size: 18),
+                          label: Text('日'),
+                        ),
+                        ButtonSegment(
+                          value: 1,
+                          icon: Icon(Icons.dark_mode, size: 18),
+                          label: Text('夜'),
+                        ),
+                        ButtonSegment(
+                          value: 2,
+                          icon: Icon(Icons.settings_suggest, size: 18),
+                          label: Text('自动'),
+                        ),
+                      ],
+                      selected: {appState.themeMode},
+                      onSelectionChanged: (s) {
+                        final mode = s.first;
+                        switch (mode) {
+                          case 0:
+                            appState.setLightMode();
+                            break;
+                          case 1:
+                            appState.setDarkMode();
+                            break;
+                          case 2:
+                            appState.setAutoTheme();
+                            break;
+                        }
+                      },
+                    ),
+                  ),
+                  
+                  // 当前主题预览
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          appState.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          '当前: ${appState.isDarkMode ? "夜间模式" : "日间模式"}',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -776,52 +781,54 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
   /// 6. 权限状态展示区域
   Widget _buildPermissionSection(AppState appState) {
     return Card(
-      margin: EdgeInsets.all(16),
-      child: Padding(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: false,  // 默认折叠
+          leading: Icon(Icons.security, size: 20, color: Colors.green),
+          title: Text('权限状态', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           children: [
-            Row(
-              children: [
-                Icon(Icons.security, size: 20, color: Colors.green),
-                SizedBox(width: 8),
-                Text('权限状态', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 12),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                appState.permissionGranted ? Icons.check_circle : Icons.error,
-                color: appState.permissionGranted ? Colors.green : Colors.red,
-              ),
-              title: Text('存储权限'),
-              subtitle: Text(appState.permissionGranted ? '已授权' : '未授权'),
-              trailing: !appState.permissionGranted
-                ? TextButton(
-                    onPressed: () async {
-                      await appState.requestPermissions();
-                    },
-                    child: Text('授权'),
-                  )
-                : null,
-            ),
-            // 悬浮窗权限
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(
-                appState.overlayPermissionGranted ? Icons.check_circle : Icons.error,
-                color: appState.overlayPermissionGranted ? Colors.green : Colors.orange,
-              ),
-              title: Text('悬浮窗权限'),
-              subtitle: Text(appState.overlayPermissionGranted ? '已授权' : '未授权（悬浮播放需要）'),
-              trailing: TextButton.icon(
-                onPressed: () async {
-                  await appState.requestOverlayPermission();
-                },
-                icon: Icon(Icons.settings_outlined, size: 16),
-                label: Text(appState.overlayPermissionGranted ? '设置' : '去授权'),
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      appState.permissionGranted ? Icons.check_circle : Icons.error,
+                      color: appState.permissionGranted ? Colors.green : Colors.red,
+                    ),
+                    title: Text('存储权限'),
+                    subtitle: Text(appState.permissionGranted ? '已授权' : '未授权'),
+                    trailing: !appState.permissionGranted
+                      ? TextButton(
+                          onPressed: () async {
+                            await appState.requestPermissions();
+                          },
+                          child: Text('授权'),
+                        )
+                      : null,
+                  ),
+                  // 悬浮窗权限
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      appState.overlayPermissionGranted ? Icons.check_circle : Icons.error,
+                      color: appState.overlayPermissionGranted ? Colors.green : Colors.orange,
+                    ),
+                    title: Text('悬浮窗权限'),
+                    subtitle: Text(appState.overlayPermissionGranted ? '已授权' : '未授权（悬浮播放需要）'),
+                    trailing: TextButton.icon(
+                      onPressed: () async {
+                        await appState.requestOverlayPermission();
+                      },
+                      icon: Icon(Icons.settings_outlined, size: 16),
+                      label: Text(appState.overlayPermissionGranted ? '设置' : '去授权'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

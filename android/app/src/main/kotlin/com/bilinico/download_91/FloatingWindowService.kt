@@ -46,10 +46,12 @@ class FloatingWindowService : Service() {
         private const val NOTIFICATION_ID = 1001
 
         // 缩放范围常量
-        private const val MIN_WIDTH = 320
-        private const val MIN_HEIGHT = 180
+        private const val MIN_WIDTH = 480
+        private const val MIN_HEIGHT = 270
         private const val MAX_WIDTH_RATIO = 0.85f
         private const val MAX_HEIGHT_RATIO = 0.8f
+        // 初始窗口大小为屏幕宽度的60%
+        private const val INITIAL_WIDTH_RATIO = 0.6f
 
         var instance: FloatingWindowService? = null
             private set
@@ -752,7 +754,8 @@ class FloatingWindowService : Service() {
 
     /**
      * 基于视频原始分辨率，按屏幕上限做等比缩放
-     * 视频分辨率优先，最大不超过屏幕宽 80% / 高 70%，最小 320x180
+     * 视频分辨率优先，最大不超过屏幕宽 85% / 高 70%，最小 480x270
+     * 默认初始大小为屏幕宽度的60%
      */
     private fun resolveVideoSize(videoPath: String) {
         try {
@@ -763,8 +766,8 @@ class FloatingWindowService : Service() {
             retriever.release()
 
             if (videoWidth > 0 && videoHeight > 0) {
-                val maxWidth = (getScreenWidth() * 0.8).toInt()
-                val maxHeight = (getScreenHeight() * 0.7).toInt()
+                val maxWidth = (getScreenWidth() * MAX_WIDTH_RATIO).toInt()
+                val maxHeight = (getScreenHeight() * MAX_HEIGHT_RATIO).toInt()
 
                 // 等比缩放：以宽度为主轴适配屏幕上限
                 var w = videoWidth
@@ -781,13 +784,22 @@ class FloatingWindowService : Service() {
                     w = (w * ratio).toInt()
                 }
                 // 最小尺寸保护（适配高分辨率屏幕，2K+）
-                w = w.coerceAtLeast(720)
-                h = h.coerceAtLeast(405)
+                w = w.coerceAtLeast(MIN_WIDTH)
+                h = h.coerceAtLeast(MIN_HEIGHT)
 
                 windowWidth = w
                 windowHeight = h
+            } else {
+                // 无法获取视频分辨率时，使用屏幕宽度的60%作为默认大小
+                val defaultWidth = (getScreenWidth() * INITIAL_WIDTH_RATIO).toInt()
+                windowWidth = defaultWidth.coerceAtLeast(MIN_WIDTH)
+                windowHeight = (windowWidth * 9 / 16).coerceAtLeast(MIN_HEIGHT)
             }
-            // 获取失败时保持默认值（540x360）
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+            // 获取失败时使用屏幕宽度的60%作为默认大小
+            val defaultWidth = (getScreenWidth() * INITIAL_WIDTH_RATIO).toInt()
+            windowWidth = defaultWidth.coerceAtLeast(MIN_WIDTH)
+            windowHeight = (windowWidth * 9 / 16).coerceAtLeast(MIN_HEIGHT)
+        }
     }
 }
