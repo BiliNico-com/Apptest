@@ -115,12 +115,14 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
     });
   }
   
-  void _resizeOverlay(int delta) async {
+  // 拖动调整大小
+  void _handleResizeDrag(DragUpdateDetails details, bool isRightCorner) {
+    final delta = isRightCorner ? details.delta.dx : -details.delta.dx;
     final newWidth = (_windowWidth + delta).clamp(240.0, 600.0);
     final aspectRatio = _controller?.value.aspectRatio ?? 16 / 9;
     final newHeight = (newWidth / aspectRatio).clamp(180.0, 400.0);
     
-    await FlutterOverlayWindow.resizeOverlay(
+    FlutterOverlayWindow.resizeOverlay(
       newWidth.round(),
       newHeight.round(),
       true,
@@ -130,6 +132,16 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
       _windowWidth = newWidth;
       _windowHeight = newHeight;
     });
+  }
+  
+  // 双击返回主应用
+  void _onDoubleTap() {
+    // 发送消息让主应用知道要恢复播放
+    FlutterOverlayWindow.shareData({
+      'action': 'returnToApp',
+      'position': _controller?.value.position.inMilliseconds ?? 0,
+    });
+    _closeOverlay();
   }
   
   void _closeOverlay() async {
@@ -160,6 +172,7 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
         color: Colors.black,
         child: GestureDetector(
           onTap: _toggleControls,
+          onDoubleTap: _onDoubleTap,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -193,38 +206,18 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // 顶部栏
+                      // 顶部栏 - 关闭按钮
                       Container(
                         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // 关闭按钮
                             GestureDetector(
                               onTap: _closeOverlay,
                               child: Container(
                                 padding: EdgeInsets.all(4),
                                 child: Icon(Icons.close, color: Colors.white, size: 20),
                               ),
-                            ),
-                            // 大小调整按钮
-                            Row(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _resizeOverlay(-40),
-                                  child: Container(
-                                    padding: EdgeInsets.all(4),
-                                    child: Icon(Icons.zoom_out, color: Colors.white, size: 18),
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => _resizeOverlay(40),
-                                  child: Container(
-                                    padding: EdgeInsets.all(4),
-                                    child: Icon(Icons.zoom_in, color: Colors.white, size: 18),
-                                  ),
-                                ),
-                              ],
                             ),
                           ],
                         ),
@@ -247,24 +240,20 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
                         ),
                       ),
                       
-                      // 底部进度条
+                      // 底部：进度条 + 角标拖动
                       if (_isInitialized && _controller != null)
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          child: ValueListenableBuilder<VideoPlayerValue>(
-                            valueListenable: _controller!,
-                            builder: (context, value, child) {
-                              final position = value.position;
-                              final duration = value.duration;
-                              final progress = duration.inMilliseconds > 0
-                                  ? position.inMilliseconds / duration.inMilliseconds
-                                  : 0.0;
-                              
-                              return Column(
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   LinearProgressIndicator(
-                                    value: progress,
+                                    value: _controller!.value.duration.inMilliseconds > 0
+                                        ? _controller!.value.position.inMilliseconds / _controller!.value.duration.inMilliseconds
+                                        : 0.0,
                                     backgroundColor: Colors.white24,
                                     valueColor: AlwaysStoppedAnimation(Colors.blue),
                                   ),
@@ -273,18 +262,60 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        _formatDuration(position),
+                                        _formatDuration(_controller!.value.position),
                                         style: TextStyle(color: Colors.white70, fontSize: 10),
                                       ),
                                       Text(
-                                        _formatDuration(duration),
+                                        _formatDuration(_controller!.value.duration),
                                         style: TextStyle(color: Colors.white70, fontSize: 10),
                                       ),
                                     ],
                                   ),
                                 ],
-                              );
-                            },
+                              ),
+                              // 左下角拖动手柄
+                              Positioned(
+                                left: -8,
+                                bottom: -4,
+                                child: GestureDetector(
+                                  onHorizontalDragUpdate: (details) => _handleResizeDrag(details, false),
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    alignment: Alignment.center,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              // 右下角拖动手柄
+                              Positioned(
+                                right: -8,
+                                bottom: -4,
+                                child: GestureDetector(
+                                  onHorizontalDragUpdate: (details) => _handleResizeDrag(details, true),
+                                  child: Container(
+                                    width: 32,
+                                    height: 32,
+                                    alignment: Alignment.center,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white54,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       else

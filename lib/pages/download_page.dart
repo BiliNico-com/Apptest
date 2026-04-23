@@ -1104,6 +1104,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   bool _controlsLocked = false;
   
   Timer? _hideControlsTimer;
+  StreamSubscription? _overlaySubscription;
   
   @override
   void initState() {
@@ -1117,7 +1118,26 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
     });
     _checkPipAvailability();
     _checkFloatingAvailability();
+    _listenToOverlayMessages();
     _initializePlayer();
+  }
+  
+  void _listenToOverlayMessages() {
+    _overlaySubscription = FloatingVideoService.overlayListener.listen((event) {
+      if (event is Map && event['action'] == 'returnToApp') {
+        // 恢复播放位置
+        final positionMs = event['position'] as int? ?? 0;
+        if (_videoPlayerController != null && mounted) {
+          _videoPlayerController!.seekTo(Duration(milliseconds: positionMs));
+          _videoPlayerController!.play();
+          setState(() {
+            _isInFloatingMode = false;
+            _showControls = true;
+          });
+          _startHideControlsTimer();
+        }
+      }
+    });
   }
   
   Future<void> _checkPipAvailability() async {
@@ -1419,6 +1439,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hideControlsTimer?.cancel();
+    _overlaySubscription?.cancel();
     try { BrightnessService.restoreBrightness(); } catch (_) {}
     _videoPlayerController.dispose();
     _chewieController?.dispose();
