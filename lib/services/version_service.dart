@@ -1,226 +1,237 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// 版本信息
 class VersionInfo {
-  final String version;      // 如 "1.0.5"
-  final int buildNumber;     // 如 340（对应 CI run_number）
-  final String downloadUrl;  // APK下载地址
-  final String releaseNotes; // 更新说明
-  final String releaseDate;  // 发布日期
+  final String version;
+  final int buildNumber;
+  final String? downloadUrl;
+  final String? releaseDate;
+  final List<String>? releaseNotes;
 
   VersionInfo({
     required this.version,
     required this.buildNumber,
-    required this.downloadUrl,
-    this.releaseNotes = '',
-    this.releaseDate = '',
+    this.downloadUrl,
+    this.releaseDate,
+    this.releaseNotes,
   });
 
-  factory VersionInfo.fromJson(Map<String, dynamic> json) {
-    return VersionInfo(
-      version: json['version'] ?? '1.0.0',
-      buildNumber: json['build_number'] ?? 0,
-      downloadUrl: json['download_url'] ?? '',
-      releaseNotes: json['release_notes'] ?? '',
-      releaseDate: json['release_date'] ?? '',
-    );
-  }
-
-  /// 完整版本标识，如 v1.0.5.340
-  String get fullVersion => 'v$version.$buildNumber';
+  @override
+  String toString() => 'v$version.$buildNumber';
 }
 
-/// 版本服务
+/// 版本服务 - 基于GitHub Release API的版本检查
+/// 
+/// 工作流程：
+/// 1. App启动时从PackageInfo获取当前版本，持久化到SharedPreferences
+/// 2. 点击"检查更新"时从GitHub Release API获取最新release
+/// 3. 比较：远端buildNumber > 本地SP中记录的buildNumber → 有更新
+/// 
+/// 不再依赖version.json静态文件，Release API是唯一真实来源
 class VersionService {
-  // 从 GitHub Releases API 获取最新版本信息
-  static const String _releasesUrl = 'https://api.github.com/repos/BiliNico-com/91Download-Mobile/releases/latest';
-  // 备用：直接读取 version.json
-  static const String _versionJsonUrl = 'https://raw.githubusercontent.com/BiliNico-com/91Download-Mobile/main/version.json';
+  static const _owner = 'BiliNico-com';
+  static const _repo = '91Download-Mobile';
+  
+  /// 本地版本信息（来自 PackageInfo，即 APK 编译时 pubspec.yaml 的值）
+  static VersionInfo localVersion = VersionInfo(version: '0.0.0', buildNumber: 0);
+  
+  /// 远程版本信息（来自 GitHub Release API）
+  static VersionInfo? remoteVersion;
+  
+  /// 是否正在检查更新
+  static bool isCheckingUpdate = false;
 
-  static String _currentVersion = '1.0.5';
-  static int _currentBuild = 0;
-  static bool _initialized = false;
+  /// 完整版本字符串（用于UI展示）
+  static String get fullVersion => 'v${localVersion.version}.${localVersion.buildNumber}';
 
-  /// 初始化版本信息（从已安装的APK本身获取）
+  /// 初始化 - 从 PackageInfo 获取本地版本并持久化到 SharedPreferences
   static Future<void> init() async {
-    if (_initialized) return;
     try {
-      final info = await PackageInfo.fromPlatform();
-      _currentVersion = info.version;          // 来自 pubspec.yaml 的 version 字段
-      _currentBuild = int.tryParse(info.buildNumber) ?? 0;  // 来自 pubspec.yaml +后的数字（CI 同步为 run_number）
-      _initialized = true;
-      debugPrint('[VersionService] 本地版本: v$_currentVersion.$_currentBuild');
-    } catch (e) {
-      debugPrint('获取版本信息失败: $e');
-    }
-  }
-
-  static String get currentVersion => _currentVersion;
-  static int get currentBuild => _currentBuild;
-  static String get fullVersion => 'v$_currentVersion.$_currentBuild';
-
-  final Dio _dio = Dio();
-
-  /// 检查更新，返回远程版本信息（返回 null 表示无更新或检查失败）
-  Future<VersionInfo?> checkUpdate() async {
-    // 方案A：GitHub Releases API（主方案）
-    try {
-      final response = await _dio.get(_releasesUrl, options: Options(
-        receiveTimeout: Duration(seconds: 10),
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-        },
-      ));
-
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final tagName = data['tag_name'] as String? ?? '';
-        final assets = data['assets'] as List? ?? [];
-        final body = data['body'] as String? ?? '';
-        final publishedAt = data['published_at'] as String? ?? '';
-
-        // 从 tag_name 解析版本号和 build number
-        // CI 生成的格式: v1.0.{run_number} （如 v1.0.340）
-        String remoteVersion = '';
-        int buildNumber = 0;
-
-        if (tagName.startsWith('v')) {
-          final verStr = tagName.substring(1); // 去掉 'v' 前缀，如 "1.0.340"
-          final parts = verStr.split('.');
-          if (parts.length >= 3) {
-            // 最后一段是 build number，前面的是语义化版本
-            buildNumber = int.tryParse(parts.last) ?? 0;
-            // 版本号取前 N-1 段拼接（如 parts=["1","0","340"] → version="1.0"）
-            // 但如果格式是 "1.0.5.340" 则取前3段
-            final versionParts = parts.length > 3 ? parts.sublist(0, 3) : parts.sublist(0, parts.length - 1);
-            remoteVersion = versionParts.join('.');
-          }
-        } else if (tagName.startsWith('build')) {
-          buildNumber = int.tryParse(tagName.substring(5)) ?? 0;
-          remoteVersion = _currentVersion; // fallback 用本地版本号
-        }
-
-        // 获取 APK 下载链接
-        String downloadUrl = '';
-        for (final asset in assets) {
-          final name = asset['name'] as String? ?? '';
-          if (name.endsWith('.apk')) {
-            downloadUrl = asset['browser_download_url'] as String? ?? '';
-            break;
-          }
-        }
-        if (downloadUrl.isEmpty) {
-          downloadUrl = 'https://github.com/BiliNico-com/91Download-Mobile/releases/latest/download/app-release.apk';
-        }
-
-        debugPrint('[VersionService] 远程版本: v$remoteVersion.$buildNumber');
-
-        return VersionInfo(
-          version: remoteVersion,   // ✅ 使用解析出的远端版本号（不再是本地值）
-          buildNumber: buildNumber,
-          downloadUrl: downloadUrl,
-          releaseNotes: body,
-          releaseDate: publishedAt.split('T').first,
-        );
+      final packageInfo = await PackageInfo.fromPlatform();
+      final parts = packageInfo.buildNumber.split('+');
+      
+      // 解析版本号和构建号
+      String version = packageInfo.version;  // 如 "1.0.5"
+      int buildNumber = 0;
+      
+      if (parts.length > 1) {
+        buildNumber = int.tryParse(parts[1]) ?? int.tryParse(packageInfo.buildNumber) ?? 0;
+      } else {
+        buildNumber = int.tryParse(packageInfo.buildNumber) ?? 0;
       }
-    } catch (e) {
-      debugPrint('GitHub API 检查更新失败: $e，尝试备用方案...');
-    }
-
-    // 方案B：读取 version.json（备用方案）
-    try {
-      final response = await _dio.get(_versionJsonUrl, options: Options(
-        receiveTimeout: Duration(seconds: 10),
-      ));
-
-      if (response.statusCode == 200) {
-        final jsonData = response.data;
-        final json = jsonData is String ? jsonDecode(jsonData) : jsonData;
-        final info = VersionInfo.fromJson(json);
-        debugPrint('[VersionService] 远程版本(version.json): ${info.fullVersion}');
-        return info;
-      }
-    } catch (e) {
-      debugPrint('备用方案检查更新失败: $e');
-    }
-
-    return null;
-  }
-
-  /// 比较版本，返回 true 表示有新版本可用
-  bool hasNewVersion(VersionInfo remote) {
-    // 第一步：比较语义化版本号 (major.minor.patch)
-    final localParts = _currentVersion.split('.');
-    final remoteParts = remote.version.split('.');
-
-    for (int i = 0; i < 3; i++) {
-      final local = localParts.length > i ? int.tryParse(localParts[i]) ?? 0 : 0;
-      final remoteVal = remoteParts.length > i ? int.tryParse(remoteParts[i]) ?? 0 : 0;
-
-      if (remoteVal > local) return true;
-      if (remoteVal < local) return false;
-    }
-
-    // 第二步：语义版本相同则比较 build number（CI run_number）
-    return remote.buildNumber > _currentBuild;
-  }
-
-  /// 下载并安装APK
-  Future<bool> downloadAndInstall(VersionInfo version, void Function(double)? onProgress) async {
-    try {
-      // 获取下载目录
-      final dir = await getExternalStorageDirectory();
-      if (dir == null) return false;
-
-      final filePath = '${dir.path}/91Download_${version.version}_build${version.buildNumber}.apk';
-      final file = File(filePath);
-
-      // 如果文件已存在且大小合理(>1MB)，直接打开安装
-      if (await file.exists()) {
-        final fileSize = await file.length();
-        if (fileSize > 1024 * 1024) {
-          debugPrint('[VersionService] 文件已存在，直接安装: $filePath (${(fileSize / 1024 / 1024).toStringAsFixed(1)}MB)');
-          final result = await OpenFilex.open(filePath);
-          return result.type == ResultType.done;
-        } else {
-          // 文件不完整，删除重新下载
-          await file.delete();
-        }
-      }
-
-      debugPrint('[VersionService] 开始下载: ${version.downloadUrl}');
-
-      // 下载APK
-      await _dio.download(
-        version.downloadUrl,
-        filePath,
-        options: Options(receiveTimeout: Duration(minutes: 10)),
-        onReceiveProgress: (received, total) {
-          if (onProgress != null) {
-            if (total > 0) {
-              onProgress(received / total);
-            } else {
-              // 没有 total 时用负数标记，UI层显示已下载大小
-              onProgress(-received / (100 * 1024 * 1024));
-            }
-          }
-        },
+      
+      localVersion = VersionInfo(
+        version: version,
+        buildNumber: buildNumber,
       );
+      
+      // 写入 SharedPreferences 作为持久化记录
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('app_build_number', buildNumber);
+      await prefs.setString('app_version', version);
+      
+      debugPrint('[VersionService] 初始化完成: $fullVersion');
+    } catch (e, stackTrace) {
+      debugPrint('[VersionService] init error: $e');
+      debugPrint('[VersionService] $stackTrace');
+    }
+  }
 
-      debugPrint('[VersionService] 下载完成，准备安装: $filePath');
-
-      // 安装APK - 系统包安装器会处理权限请求
-      final result = await OpenFilex.open(filePath);
-      return result.type == ResultType.done;
+  /// 获取本地存储的 build number
+  static Future<int> getStoredBuildNumber() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getInt('app_build_number') ?? localVersion.buildNumber ?? 0;
     } catch (e) {
-      debugPrint('下载更新失败: $e');
-      return false;
+      return localVersion.buildNumber;
+    }
+  }
+
+  /// 检查更新 - 只走 GitHub Release API
+  /// 返回 null 表示无更新或检查失败
+  static Future<VersionInfo?> checkUpdate() async {
+    if (isCheckingUpdate) return null;
+    isCheckingUpdate = true;
+    
+    try {
+      debugPrint('[VersionService] 正在检查更新...');
+      
+      // 方案1：GitHub Release API（唯一真实来源）
+      final release = await _fetchLatestRelease();
+      if (release != null) {
+        remoteVersion = release;
+        
+        // 比较 build number
+        final storedBuild = await getStoredBuildNumber();
+        if (release.buildNumber > storedBuild || 
+            (release.buildNumber == 0 && release.version != localVersion.version)) {
+          debugPrint('[VersionService] 发现新版本: ${release} > v${localVersion.version}.$storedBuild');
+          return release;
+        }
+        
+        debugPrint('[VersionService] 当前已是最新版本');
+        return null;
+      }
+      
+      debugPrint('[VersionService] 未获取到远程版本信息');
+      return null;
+    } catch (e, stackTrace) {
+      debugPrint('[VersionService] checkUpdate error: $e');
+      debugPrint('[VersionService] $stackTrace');
+      return null;
+    } finally {
+      isCheckingUpdate = false;
+    }
+  }
+  
+  /// 是否有新版本可用
+  static bool hasNewVersion(VersionInfo? remote) {
+    if (remote == null) return false;
+    return remote.buildNumber > localVersion.buildNumber ||
+           remote.version != localVersion.version;
+  }
+
+  /// 从 GitHub Release API 获取最新版本
+  static Future<VersionInfo?> _fetchLatestRelease() async {
+    final client = HttpClient();
+    try {
+      final uri = Uri.https(
+        'api.github.com', '/repos/$_owner/$_repo/releases/latest',
+      );
+      
+      final request = await client.getUrl(uri);
+      request.headers.set('User-Agent', '91Download-App/$fullVersion');
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+        final body = await response.transform<String>().join();
+        return _parseRelease(body);
+      } else if (response.statusCode == 404) {
+        debugPrint('[VersionService] No releases found (404)');
+        return null;
+      } else {
+        debugPrint('[VersionService] API error: ${response.statusCode}');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[VersionService] fetch error: $e');
+      debugPrint('[VersionService] $stackTrace');
+      return null;
+    } finally {
+      client.close();
+    }
+  }
+
+  /// 解析 GitHub Release JSON
+  static VersionInfo? _parseRelease(String jsonBody) {
+    try {
+      // 简单JSON解析（避免引入额外依赖）
+      final tagMatch = RegExp(r'"tag_name"\s*:\s*"([^"]+)"').firstMatch(jsonBody);
+      final nameMatch = RegExp(r'"name"\s*:\s*"([^"]+)"').firstMatch(jsonBody);
+      final dateMatch = RegExp(r'"published_at"\s*:\s*"([^"]+)"').firstMatch(jsonBody);
+      final bodyMatch = RegExp(r'"body"\s*:\s*"((?:[^"\\]|\\.)*)"', dotAll: true).firstMatch(jsonBody);
+
+      // 提取下载URL
+      String? downloadUrl;
+      final assetRegex = RegExp(r'"browser_download_url"\s*:\s*"([^"]+\.apk[^"]*)"');
+      final assetMatch = assetRegex.firstMatch(jsonBody);
+      if (assetMatch != null) {
+        downloadUrl = assetMatch.group(1);
+      } else {
+        // 默认使用 latest release 页面
+        downloadUrl = 'https://github.com/$_owner/$_repo/releases/latest/download/app-release.apk';
+      }
+
+      // 解析 tag_name 为 version + buildNumber
+      // 格式: "v1.0.352" 或 "1.0.5+352"
+      String tagName = tagMatch?.group(1) ?? '';
+      if (!tagName.startsWith('v')) tagName = 'v$tagName';
+      
+      // 尝试提取数字作为 buildNumber
+      final digits = RegExp(r'(\d+)').allMatches(tagName).map((m) => m.group(1)).toList();
+      int buildNumber = 0;
+      String version = '0.0.0';
+      
+      if (digits.length >= 3) {
+        version = '${digits[0]}.${digits[1]}.${digits[2]}';
+        buildNumber = int.parse(digits.length > 3 ? digits.last : digits[2]);
+      } else if (digits.length == 2) {
+        version = '1.${digits[0]}';
+        buildNumber = int.parse(digits[1]);
+      } else if (digits.length == 1) {
+        buildNumber = int.parse(digits[0]);
+        version = '1.0.0';
+      }
+      
+      // 如果tag格式是 v1.0.352，最后一段就是buildNumber
+      final dotParts = tagName.replaceAll('v', '').split('.');
+      if (dotParts.length >= 3) {
+        buildNumber = int.tryParse(dotParts.last) ?? buildNumber;
+      }
+      
+      // 解析 release notes
+      List<String>? notes;
+      if (bodyMatch != null) {
+        final bodyText = bodyMatch.group(1)?.replaceAll('\\n', '\n') ?? '';
+        notes = bodyText.split('\n')
+            .where((l) => l.trim().isNotEmpty)
+            .map((l) => l.replaceAll(RegExp(r'^-\s*'), '').trim())
+            .where((l) => l.isNotEmpty)
+            .toList();
+      }
+
+      return VersionInfo(
+        version: version,
+        buildNumber: buildNumber,
+        downloadUrl: downloadUrl,
+        releaseDate: dateMatch?.group(1),
+        releaseNotes: notes,
+      );
+    } catch (e) {
+      debugPrint('[VersionService] parse release error: $e');
+      return null;
     }
   }
 }
