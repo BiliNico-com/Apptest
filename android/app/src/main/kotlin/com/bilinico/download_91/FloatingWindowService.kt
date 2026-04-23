@@ -278,7 +278,7 @@ class FloatingWindowService : Service() {
 
                 // 后退10秒
                 val btnBack = ImageView(context).apply {
-                    setImageResource(android.R.drawable.ic_media_rewind)
+                    setImageResource(android.R.drawable.ic_media_previous)
                     setColorFilter(0xFFFFFFFF.toInt())
                     setPadding(16, 16, 16, 16)
                     setOnClickListener {
@@ -522,17 +522,14 @@ class FloatingWindowService : Service() {
     private fun getScreenWidth(): Int {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val bounds = android.graphics.Rect()
-            windowManager?.maximumWindowMetrics?.bounds?.let { bounds } ?: run {
-                display?.getRealSize(android.util.Size(0, 0))
-                1080
-            }
-            bounds.width()
+            windowManager?.maximumWindowMetrics?.bounds?.let { bounds }
+            bounds.width().coerceAtLeast(1080)
         } else {
             @Suppress("DEPRECATION")
-            val display = defaultDisplay
+            val display = windowManager!!.defaultDisplay
             @Suppress("DEPRECATION") val size = android.util.Point()
             display.getRealSize(size)
-            size.x
-        }.coerceAtLeast(1080)
+            size.x.coerceAtLeast(1080)
+        }
     }
 }
