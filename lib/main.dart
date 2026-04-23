@@ -250,14 +250,6 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
   }
   
   @override
-  void dispose() {
-    _messageSubscription?.cancel();
-    _hideControlsTimer?.cancel();
-    _controller?.dispose();
-    super.dispose();
-  }
-  
-  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
