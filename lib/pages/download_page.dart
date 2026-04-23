@@ -1138,10 +1138,14 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
         }
       }
       // 悬浮窗关闭时更新状态
-      if (event is Map && event['action'] == 'close') {
-        setState(() {
-          _isInFloatingMode = false;
-        });
+      if (event is Map && (event['action'] == 'close' || event['action'] == 'overlayClosed')) {
+        if (mounted) {
+          setState(() {
+            _isInFloatingMode = false;
+            _showControls = true;
+          });
+          _startHideControlsTimer();
+        }
       }
     });
   }

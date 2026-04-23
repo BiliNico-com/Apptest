@@ -32,7 +32,7 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
   bool _isPlaying = false;
   bool _showControls = true;
   double _windowWidth = 320;
-  double _windowHeight = 180;
+  double _windowHeight = 200;
   Timer? _hideControlsTimer;
   
   @override
@@ -140,22 +140,26 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
   }
   
   // 双指缩放调整大小
-  double _lastScale = 1.0;
+  double _baseWidth = 320;
+  double _baseHeight = 180;
   
   void _onScaleStart(ScaleStartDetails details) {
-    _lastScale = 1.0;
+    // 记录当前窗口大小作为基准
+    _baseWidth = _windowWidth;
+    _baseHeight = _windowHeight;
   }
   
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (details.scale == 1.0) return;
+    // 缩放比例
+    final scale = details.scale;
+    if (scale == 1.0) return;
     
-    final scaleDelta = details.scale / _lastScale;
-    _lastScale = details.scale;
-    
-    final newWidth = (_windowWidth * scaleDelta).clamp(180.0, 500.0);
+    // 基于基准大小计算新大小
+    final newWidth = (_baseWidth * scale).clamp(200.0, 450.0);
     final aspectRatio = _controller?.value.aspectRatio ?? 16 / 9;
-    final newHeight = (newWidth / aspectRatio).clamp(120.0, 350.0);
+    final newHeight = (newWidth / aspectRatio).clamp(140.0, 320.0);
     
+    // 调整窗口大小
     FlutterOverlayWindow.resizeOverlay(
       newWidth.round(),
       newHeight.round(),
@@ -190,6 +194,11 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
   
   void _closeOverlay() async {
     await _controller?.pause();
+    // 通知主应用悬浮窗已关闭
+    await FlutterOverlayWindow.shareData({
+      'action': 'overlayClosed',
+    });
+    await Future.delayed(Duration(milliseconds: 100));
     await FlutterOverlayWindow.closeOverlay();
   }
   
