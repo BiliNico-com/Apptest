@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.media.AudioAttributes
+import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.IBinder
@@ -163,6 +164,9 @@ class FloatingWindowService : Service() {
         }
 
         releaseMediaPlayer()
+
+        // 基于视频原始分辨率计算窗口大小（等比缩放，不超过屏幕 80% 宽度）
+        resolveVideoSize(videoPath)
 
         // 创建根布局
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -602,5 +606,50 @@ class FloatingWindowService : Service() {
 
     private fun getScreenWidth(): Int {
         return resources.displayMetrics.widthPixels.coerceAtLeast(1080)
+    }
+
+    private fun getScreenHeight(): Int {
+        return resources.displayMetrics.heightPixels.coerceAtLeast(1920)
+    }
+
+    /**
+     * 基于视频原始分辨率，按屏幕上限做等比缩放
+     * 视频分辨率优先，最大不超过屏幕宽 80% / 高 70%，最小 320x180
+     */
+    private fun resolveVideoSize(videoPath: String) {
+        try {
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(videoPath)
+            val videoWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt() ?: 0
+            val videoHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
+            retriever.release()
+
+            if (videoWidth > 0 && videoHeight > 0) {
+                val maxWidth = (getScreenWidth() * 0.8).toInt()
+                val maxHeight = (getScreenHeight() * 0.7).toInt()
+
+                // 等比缩放：以宽度为主轴适配屏幕上限
+                var w = videoWidth
+                var h = videoHeight
+
+                if (w > maxWidth) {
+                    val ratio = maxWidth.toFloat() / w
+                    w = maxWidth
+                    h = (h * ratio).toInt()
+                }
+                if (h > maxHeight) {
+                    val ratio = maxHeight.toFloat() / h
+                    h = maxHeight
+                    w = (w * ratio).toInt()
+                }
+                // 最小尺寸保护
+                w = w.coerceAtLeast(320)
+                h = h.coerceAtLeast(180)
+
+                windowWidth = w
+                windowHeight = h
+            }
+            // 获取失败时保持默认值（540x360）
+        } catch (_: Exception) {}
     }
 }
