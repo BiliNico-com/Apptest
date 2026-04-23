@@ -9,6 +9,7 @@ import 'pages/main_page.dart';
 import 'pages/pin_input_dialog.dart';
 import 'services/app_state.dart';
 import 'services/pin_service.dart';
+import 'services/floating_video_service.dart';
 import 'utils/logger.dart';
 
 /// 悬浮窗入口点 - 必须是顶级函数
