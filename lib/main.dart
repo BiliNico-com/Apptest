@@ -433,6 +433,9 @@ void main() async {
   
   // 初始化日志
   
+  // 初始化悬浮窗监听
+  FloatingVideoService.init();
+  
   runApp(const MyApp());
 }
 

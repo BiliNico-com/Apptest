@@ -14,12 +14,30 @@ class FloatingVideoService {
   static String? _currentVideoPath;
   static String? _currentTitle;
   static bool _isFloating = false;
+  static StreamSubscription<dynamic>? _overlaySubscription;
   
   /// 当前是否正在悬浮窗播放
   static bool get isFloating => _isFloating;
   
   /// 当前视频路径
   static String? get currentVideoPath => _currentVideoPath;
+  
+  /// 初始化悬浮窗监听（应用启动时调用一次）
+  static void init() {
+    _overlaySubscription?.cancel();
+    _overlaySubscription = FlutterOverlayWindow.overlayListener.listen((event) {
+      if (event is Map) {
+        final action = event['action'] as String?;
+        // 监听悬浮窗关闭事件，重置状态
+        if (action == 'overlayClosed' || action == 'close') {
+          _isFloating = false;
+          _currentVideoPath = null;
+          _currentTitle = null;
+          debugPrint('[FloatingVideo] 收到悬浮窗关闭事件，状态已重置');
+        }
+      }
+    });
+  }
   
   /// 检查悬浮窗权限是否可用
   static Future<bool> isPermissionGranted() async {
