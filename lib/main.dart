@@ -31,8 +31,8 @@ class _OverlayVideoAppState extends State<OverlayVideoApp> {
   bool _isInitialized = false;
   bool _isPlaying = false;
   bool _showControls = true;
-  double _windowWidth = 360;
-  double _windowHeight = 240;
+  double _windowWidth = 320;
+  double _windowHeight = 180;
   Timer? _hideControlsTimer;
   
   @override

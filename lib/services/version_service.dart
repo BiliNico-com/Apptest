@@ -85,25 +85,23 @@ class VersionService {
         final body = data['body'] as String? ?? '';
         final publishedAt = data['published_at'] as String? ?? '';
         
-        // 解析版本号，格式: v1.0.5.322 或 build322
-        String version = '1.0.5';
+        // 解析版本号
+        // tag 格式: v1.0.329 (workflow 生成格式: v1.0.${{ github.run_number }})
         int buildNumber = 0;
         
         if (tagName.startsWith('v')) {
-          // 格式: v1.0.5.322
+          // 格式: v1.0.329 或 v1.0.5.329
           final parts = tagName.substring(1).split('.');
           if (parts.length >= 3) {
-            version = '${parts[0]}.${parts[1]}.${parts[2]}';
-          }
-          if (parts.length >= 4) {
-            buildNumber = int.tryParse(parts[3]) ?? 0;
+            // 最后一个数字是 buildNumber
+            buildNumber = int.tryParse(parts.last) ?? 0;
           }
         } else if (tagName.startsWith('build')) {
           // 格式: build322
           buildNumber = int.tryParse(tagName.substring(5)) ?? 0;
         }
         
-        // 获取 APK 下载链接
+        // 获取 APK 下载链接 - 直接从 assets 获取
         String downloadUrl = '';
         for (final asset in assets) {
           final name = asset['name'] as String? ?? '';
@@ -119,7 +117,7 @@ class VersionService {
         }
         
         return VersionInfo(
-          version: version,
+          version: _currentVersion, // 使用本地版本号
           buildNumber: buildNumber,
           downloadUrl: downloadUrl,
           releaseNotes: body,
