@@ -1547,6 +1547,24 @@ class CrawlerCore {
     return result.isNotEmpty;
   }
 
+  /// 获取已下载视频的本地路径
+  Future<String?> getDownloadedPath(String videoId) async {
+    final db = await _getDb();
+    if (db == null) return null;
+
+    final result = await db.query(
+      'download_history',
+      columns: ['file_path'],
+      where: 'video_id = ?',
+      whereArgs: [videoId],
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['file_path'] as String?;
+    }
+    return null;
+  }
+
   /// 获取下载历史
   Future<List<Map<String, dynamic>>> getDownloadHistory({
     int limit = 50,
