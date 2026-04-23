@@ -1131,31 +1131,9 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   }
   
   void _listenToOverlayMessages() {
-    _overlaySubscription = FloatingVideoService.overlayListener.listen((event) {
-      if (event is Map && event['action'] == 'returnToApp') {
-        // 恢复播放位置
-        final positionMs = event['position'] as int? ?? 0;
-        if (_videoPlayerController != null && mounted) {
-          _videoPlayerController!.seekTo(Duration(milliseconds: positionMs));
-          _videoPlayerController!.play();
-          setState(() {
-            _isInFloatingMode = false;
-            _showControls = true;
-          });
-          _startHideControlsTimer();
-        }
-      }
-      // 悬浮窗关闭时更新状态
-      if (event is Map && (event['action'] == 'close' || event['action'] == 'overlayClosed')) {
-        if (mounted) {
-          setState(() {
-            _isInFloatingMode = false;
-            _showControls = true;
-          });
-          _startHideControlsTimer();
-        }
-      }
-    });
+    // 原生悬浮窗方案：不再需要 overlayListener
+    // 悬浮窗关闭由原生 Service 内部处理，通过 isFloating 状态判断即可
+    // 如果未来需要接收原生广播消息，可以使用 MethodChannel 的 EventChannel
   }
   
   Future<void> _checkPipAvailability() async {
