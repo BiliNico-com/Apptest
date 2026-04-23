@@ -950,8 +950,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
       SnackBar(content: Text('正在检查更新...')),
     );
     
-    final versionService = VersionService();
-    final remoteVersion = await versionService.checkUpdate();
+    final remoteVersion = await VersionService.checkUpdate();
     
     if (remoteVersion == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -960,7 +959,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
       return;
     }
     
-    if (!versionService.hasNewVersion(remoteVersion)) {
+    if (!VersionService.hasNewVersion(remoteVersion)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('当前已是最新版本 ${VersionService.fullVersion}')),
       );
@@ -1061,8 +1060,7 @@ class _SettingsPageState extends State<SettingsPage> with AutomaticKeepAliveClie
       ),
     );
     
-    final versionService = VersionService();
-    final success = await versionService.downloadAndInstall(version, (p) {
+    final success = await VersionService.downloadAndInstall(version, (p) {
       progress = p;
       // 刷新对话框UI
       if (setDialogState != null) {

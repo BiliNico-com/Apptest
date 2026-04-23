@@ -271,7 +271,7 @@ class VersionService {
       }
       
       await sink.close();
-      await client.close();
+      client.close();
       
       debugPrint('[VersionService] Download complete: ${apkFile.path}');
       
