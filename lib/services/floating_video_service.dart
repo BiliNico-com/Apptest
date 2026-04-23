@@ -42,33 +42,16 @@ class FloatingVideoService {
     }
   }
   
-  /// 计算合适的悬浮窗尺寸（视频分辨率的50%）
+  /// 计算合适的悬浮窗尺寸
+  /// 使用固定的较大默认值，确保窗口大小合适
   static Future<(int width, int height)> _calculateWindowSize(String videoPath) async {
-    try {
-      final controller = VideoPlayerController.file(File(videoPath));
-      await controller.initialize();
-      
-      // 获取视频实际分辨率
-      final videoWidth = controller.value.size.width;
-      final videoHeight = controller.value.size.height;
-      await controller.dispose();
-      
-      // 计算窗口大小为视频分辨率的50%
-      final windowWidth = (videoWidth * 0.5).round();
-      final windowHeight = (videoHeight * 0.5).round();
-      
-      // 限制窗口大小范围 - 增大最小尺寸
-      final finalWidth = windowWidth.clamp(240, 450);
-      final finalHeight = windowHeight.clamp(160, 320);
-      
-      print('[FloatingVideo] 视频分辨率: ${videoWidth}x$videoHeight, 窗口大小: ${finalWidth}x$finalHeight');
-      
-      return (finalWidth, finalHeight);
-    } catch (e) {
-      print('[FloatingVideo] 计算窗口大小失败: $e');
-      // 默认尺寸 - 增大
-      return (320, 200);
-    }
+    // 使用固定的较大默认尺寸（屏幕宽度的约 40%，按 16:9 比例）
+    // 这个尺寸适合大多数手机屏幕
+    const defaultWidth = 400;
+    const defaultHeight = 250;
+    
+    print('[FloatingVideo] 使用默认窗口大小: ${defaultWidth}x$defaultHeight');
+    return (defaultWidth, defaultHeight);
   }
   
   /// 启动悬浮窗播放
