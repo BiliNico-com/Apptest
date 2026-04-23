@@ -194,7 +194,7 @@ jobs:
         }
         KOTLINEOF
 
-        # 创建 PipPlugin.kt
+        # 创建 PipPlugin.kt（包含 updatePipParams 修复：使用 *100 转换避免 toInt 截断）
         cat > android/app/src/main/kotlin/com/bilinico/download_91/PipPlugin.kt << 'KOTLINEOF'
         package com.bilinico.download_91
 
@@ -237,6 +237,25 @@ jobs:
                     "isInPipMode" -> {
                         result.success(activity.isInPictureInPictureMode)
                     }
+                    "updatePipParams" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity.isInPictureInPictureMode) {
+                            val aspectRatio = call.argument<Double>("aspectRatio") ?: 16.0 / 9.0
+                            try {
+                                // 修复：使用与 enterPip 相同的宽高比转换方式，避免 toInt 截断丢失精度
+                                val width = (aspectRatio * 100).toInt()
+                                val height = 100
+                                val params = PictureInPictureParams.Builder()
+                                    .setAspectRatio(Rational(width, height))
+                                    .build()
+                                activity.setPictureInPictureParams(params)
+                                result.success(true)
+                            } catch (e: Exception) {
+                                result.error("PIP_ERROR", e.message, null)
+                            }
+                        } else {
+                            result.success(false)
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }
@@ -246,11 +265,16 @@ jobs:
         cat > android/app/src/main/kotlin/com/bilinico/download_91/MainActivity.kt << 'KOTLINEOF'
         package com.bilinico.download_91
 
+        import android.content.Intent
+        import android.net.Uri
+        import android.os.Build
+        import android.provider.Settings
         import io.flutter.embedding.android.FlutterActivity
         import io.flutter.embedding.engine.FlutterEngine
         import io.flutter.plugin.common.MethodChannel
 
         class MainActivity: FlutterActivity() {
+            private val FLOATING_CHANNEL = "com.bilinico.download_91/floating_video"
             private lateinit var brightnessPlugin: BrightnessPlugin
             private lateinit var pipPlugin: PipPlugin
 
@@ -270,6 +294,58 @@ jobs:
                     .setMethodCallHandler { call, result ->
                         pipPlugin.handleMethodCall(call, result)
                     }
+                
+                // 注册悬浮窗通信通道
+                MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FLOATING_CHANNEL).setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        "openSettings" -> {
+                            openOverlaySettings()
+                            result.success(true)
+                        }
+                        "getOverlayPermission" -> {
+                            result.success(canDrawOverlays())
+                        }
+                        "requestOverlayPermission" -> {
+                            requestOverlayPermission()
+                            result.success(true)
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
+            }
+            
+            private fun canDrawOverlays(): Boolean {
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    Settings.canDrawOverlays(this)
+                } else {
+                    true
+                }
+            }
+            
+            private fun requestOverlayPermission() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(intent)
+                }
+            }
+            
+            private fun openOverlaySettings() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(intent)
+                }
+            }
+
+            override fun onUserLeaveHint() {
+                super.onUserLeaveHint()
             }
         }
         KOTLINEOF
