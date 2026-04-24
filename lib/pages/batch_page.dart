@@ -312,9 +312,26 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
         if (appState.pendingAuthorInfo != null && !_isAuthorPageMode && appState.crawler != null) {
           final info = appState.pendingAuthorInfo!;
           appState.pendingAuthorInfo = null;  // 立即清除，防止重复触发
+          // 立即设置作者模式状态，避免先显示之前内容
+          _isAuthorPageMode = true;
+          _currentAuthorId = info['authorId']!;
+          _currentAuthorName = info['authorName']!;
+          _authorVideos.clear();
+          _authorCurrentPage = 0;
+          _authorHasMore = true;
+          _selectedIds.clear();
+          _isLoading = true;  // 显示加载状态
+          // 设置返回键回调
+          appState.onWillPopCallback = () {
+            if (_isAuthorPageMode) {
+              _exitAuthorPageMode();
+              return true;
+            }
+            return false;
+          };
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
-              _enterAuthorPageMode(info['authorId']!, info['authorName']!);
+              _loadMoreAuthorVideos();
             }
           });
         }

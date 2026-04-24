@@ -1112,6 +1112,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   bool _controlsLocked = false;
   
   Timer? _hideControlsTimer;
+  Timer? _floatingCheckTimer;  // 悬浮窗状态检查定时器
   StreamSubscription? _overlaySubscription;
   
   @override
@@ -1199,6 +1200,8 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
         _videoPlayerController?.pause();
         // 隐藏控件，显示悬浮窗播放中的提示
         _showControls = false;
+        // 启动定时器检查悬浮窗状态
+        _startFloatingCheckTimer();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('悬浮窗启动失败，请检查权限设置')),
@@ -1207,7 +1210,24 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
     }
   }
   
+  /// 启动悬浮窗状态检查定时器
+  void _startFloatingCheckTimer() {
+    _floatingCheckTimer?.cancel();
+    _floatingCheckTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+      // 检查原生悬浮窗是否还在运行
+      if (!FloatingVideoService.isFloating) {
+        // 悬浮窗已关闭（用户点击了x或双击返回）
+        timer.cancel();
+        if (mounted && _isInFloatingMode) {
+          setState(() => _isInFloatingMode = false);
+          debugPrint('[FloatingMode] 检测到悬浮窗已关闭，自动退出悬浮模式');
+        }
+      }
+    });
+  }
+  
   Future<void> _exitFloatingMode() async {
+    _floatingCheckTimer?.cancel();
     await FloatingVideoService.stopFloating();
     if (mounted) setState(() => _isInFloatingMode = false);
   }
@@ -1456,6 +1476,7 @@ class _VideoPlayerPageState extends State<VideoPlayerPage> with WidgetsBindingOb
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _hideControlsTimer?.cancel();
+    _floatingCheckTimer?.cancel();
     _overlaySubscription?.cancel();
     try { BrightnessService.restoreBrightness(); } catch (_) {}
     _videoPlayerController.dispose();
