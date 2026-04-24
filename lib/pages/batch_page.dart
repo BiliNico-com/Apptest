@@ -579,20 +579,27 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       video.authorId != null && video.authorId!.isNotEmpty;
     
     return GestureDetector(
-      onTap: () {
-        // 如果悬浮窗正在播放，则直接切换到该视频
+      onTap: () async {
+        // 如果悬浮窗正在播放，且该视频已下载，则切换到该视频
         if (FloatingVideoService.isFloating) {
-          _switchToFloatingVideo(video);
-        } else {
-          // 否则切换选择状态
-          setState(() {
-            if (isSelected) {
-              _selectedIds.remove(video.id);
-            } else {
-              _selectedIds.add(video.id);
-            }
-          });
+          final crawler = appState.crawler;
+          final localPath = await crawler?.getDownloadedPath(video.id);
+          
+          if (localPath != null && localPath.isNotEmpty) {
+            // 已下载，切换悬浮窗视频
+            await _switchToFloatingVideo(video);
+            return;
+          }
+          // 未下载，继续执行勾选逻辑
         }
+        // 切换选择状态
+        setState(() {
+          if (isSelected) {
+            _selectedIds.remove(video.id);
+          } else {
+            _selectedIds.add(video.id);
+          }
+        });
       },
       child: Card(
         color: isSelected ? Colors.blue.withOpacity(0.2) : null,
@@ -694,20 +701,27 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     final isFollowed = hasAuthor && appState.followedAuthorsService.isFollowedSync(video.authorId!);
     
     return GestureDetector(
-      onTap: () {
-        // 如果悬浮窗正在播放，则直接切换到该视频
+      onTap: () async {
+        // 如果悬浮窗正在播放，且该视频已下载，则切换到该视频
         if (FloatingVideoService.isFloating) {
-          _switchToFloatingVideo(video);
-        } else {
-          // 否则切换选择状态
-          setState(() {
-            if (isSelected) {
-              _selectedIds.remove(video.id);
-            } else {
-              _selectedIds.add(video.id);
-            }
-          });
+          final crawler = appState.crawler;
+          final localPath = await crawler?.getDownloadedPath(video.id);
+          
+          if (localPath != null && localPath.isNotEmpty) {
+            // 已下载，切换悬浮窗视频
+            await _switchToFloatingVideo(video);
+            return;
+          }
+          // 未下载，继续执行勾选逻辑
         }
+        // 切换选择状态
+        setState(() {
+          if (isSelected) {
+            _selectedIds.remove(video.id);
+          } else {
+            _selectedIds.add(video.id);
+          }
+        });
       },
       child: Card(
         color: isSelected ? Colors.blue.withOpacity(0.2) : null,
