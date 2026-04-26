@@ -199,18 +199,26 @@ class DownloadManager extends ChangeNotifier {
   /// 获取等待中的任务数量
   int get waitingCount => _waitingQueue.length;
   
-  /// 检查视频是否已下载（检查内存任务 + 历史数据库）
-  /// 返回 true 表示视频已经下载完成过（包含已完成任务和历史记录）
+  /// 检查视频是否已下载（检查内存任务 + 历史数据库 + 文件是否存在）
+  /// 返回 true 表示视频已经下载完成过且文件存在
   Future<bool> isVideoDownloaded(String videoId) async {
     // 1. 检查内存中是否有已完成的任务
     final task = _taskMap[videoId];
     if (task != null && task.status == DownloadStatus.completed) {
-      return true;
+      // 检查文件是否存在
+      if (task.filePath != null && task.filePath!.isNotEmpty) {
+        final file = File(task.filePath!);
+        if (await file.exists()) return true;
+      }
     }
-    // 2. 检查历史数据库（持久化记录，跨会话有效）
+    // 2. 检查历史数据库
     if (_crawler != null) {
       try {
-        return await _crawler!.isDownloaded(videoId);
+        final path = await _crawler!.getDownloadedPath(videoId);
+        if (path != null && path.isNotEmpty) {
+          final file = File(path);
+          if (await file.exists()) return true;
+        }
       } catch (e) {
         Logger().log('Download', '检查下载历史失败: $e');
       }
@@ -660,6 +668,10 @@ class DownloadManager extends ChangeNotifier {
           task.error = map['error'];
           if (map['download_time'] != null) {
             task.startTime = DateTime.parse(map['download_time']);
+            // 如果是已完成任务，同时设置结束时间
+            if (task.status == DownloadStatus.completed) {
+              task.endTime = task.startTime;
+            }
           }
           _tasks.add(task);
           _taskMap[video.id] = task;
@@ -701,6 +713,7 @@ class DownloadManager extends ChangeNotifier {
         task.filePath = record['file_path'];
         if (record['download_time'] != null) {
           task.startTime = DateTime.parse(record['download_time']);
+          task.endTime = task.startTime;  // 同时设置结束时间
         }
         
         _tasks.add(task);

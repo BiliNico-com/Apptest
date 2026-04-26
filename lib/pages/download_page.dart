@@ -901,7 +901,7 @@ class _DownloadPageState extends State<DownloadPage> with SingleTickerProviderSt
                     ),
                     SizedBox(height: 4),
                     Text(
-                      '下载于 ${_formatTime(task.endTime)}',
+                      '下载于 ${_formatTime(task.endTime ?? task.startTime)}',
                       style: TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
