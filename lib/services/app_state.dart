@@ -59,6 +59,9 @@ class AppState extends ChangeNotifier {
   // 隐私模式：模糊预览图
   bool privacyMode = false;
   
+  // .nomedia：防止下载目录被系统媒体扫描器索引
+  bool nomediaEnabled = false;
+  
   // 应用锁：进入APP需要生物识别认证
   bool appLockEnabled = false;
   bool isAuthenticated = false;  // 当前会话是否已认证
@@ -150,6 +153,7 @@ class AppState extends ChangeNotifier {
     maxConcurrentSegments = prefs.getInt('maxConcurrentSegments') ?? 32;
     appLockEnabled = prefs.getBool('appLockEnabled') ?? false;
     privacyMode = prefs.getBool('privacyMode') ?? false;
+    nomediaEnabled = prefs.getBool('nomediaEnabled') ?? false;
     
     notifyListeners();
   }
@@ -173,6 +177,7 @@ class AppState extends ChangeNotifier {
     await prefs.setInt('maxConcurrentSegments', maxConcurrentSegments);
     await prefs.setBool('appLockEnabled', appLockEnabled);
     await prefs.setBool('privacyMode', privacyMode);
+    await prefs.setBool('nomediaEnabled', nomediaEnabled);
   }
 
   // 请求存储权限 - 适配 Android 13+ 的细粒度媒体权限
@@ -268,6 +273,16 @@ class AppState extends ChangeNotifier {
         final appDir = await getApplicationDocumentsDirectory();
         downloadDir = '${appDir.path}/91Download';
       }
+    }
+    
+    // 同步 .nomedia 文件状态
+    if (downloadDir.isNotEmpty && nomediaEnabled) {
+      try {
+        final nomediaFile = File('$downloadDir/.nomedia');
+        if (!await nomediaFile.exists()) {
+          await nomediaFile.create();
+        }
+      } catch (_) {}
     }
     
     notifyListeners();
@@ -437,6 +452,27 @@ class AppState extends ChangeNotifier {
   // 切换应用锁
   Future<void> toggleAppLock(bool enable) async {
     appLockEnabled = enable;
+    await _saveSettings();
+    notifyListeners();
+  }
+  
+  // 切换 .nomedia（防止媒体扫描）
+  Future<void> toggleNomedia(bool enable) async {
+    nomediaEnabled = enable;
+    if (downloadDir.isNotEmpty) {
+      try {
+        final nomediaFile = File('$downloadDir/.nomedia');
+        if (enable) {
+          if (!await nomediaFile.exists()) {
+            await nomediaFile.create();
+          }
+        } else {
+          if (await nomediaFile.exists()) {
+            await nomediaFile.delete();
+          }
+        }
+      } catch (_) {}
+    }
     await _saveSettings();
     notifyListeners();
   }
