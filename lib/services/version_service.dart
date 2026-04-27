@@ -197,17 +197,49 @@ class VersionService {
 
       final buildNumber = int.tryParse(tagMatch.group(1)!) ?? 0;
       
+      // 解析更新日志：从 markdown-body 区域提取文本
+      final releaseNotes = <String>[];
+      final bodyMatch = RegExp(r'class="markdown-body[^"]*">(.*?)</div>', dotAll: true).firstMatch(html);
+      if (bodyMatch != null) {
+        final bodyHtml = bodyMatch.group(1)!;
+        // 提取 <li> 内容
+        final liMatches = RegExp(r'<li>(.*?)</li>', dotAll: true).allMatches(bodyHtml);
+        for (final li in liMatches) {
+          final text = _stripHtmlTags(li.group(1)!).trim();
+          if (text.isNotEmpty) releaseNotes.add(text);
+        }
+        // 如果没有 <li>，尝试提取纯文本
+        if (releaseNotes.isEmpty) {
+          final text = _stripHtmlTags(bodyHtml).trim();
+          if (text.isNotEmpty) {
+            releaseNotes.addAll(text.split('\n').where((s) => s.trim().isNotEmpty));
+          }
+        }
+      }
+      
       return VersionInfo(
         version: '1.0.5',
         buildNumber: buildNumber,
         downloadUrl: 'https://github.com/$_owner/$_repo/releases/latest/download/app-release.apk',
         releaseDate: '',
-        releaseNotes: [],
+        releaseNotes: releaseNotes,
       );
     } catch (e) {
       Logger().logSync('Version', 'parse release page error: $e');
       return null;
     }
+  }
+  
+  /// 去除 HTML 标签
+  static String _stripHtmlTags(String html) {
+    return html
+      .replaceAll(RegExp(r'<[^>]*>'), '')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&nbsp;', ' ');
   }
 
   /// 下载并安装更新
