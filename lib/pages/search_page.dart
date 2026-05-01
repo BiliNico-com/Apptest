@@ -927,8 +927,11 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
         _status = '请先选择站点';
       });
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('请先在设置页选择站点')),
+          SnackBar(
+            duration: Duration(seconds: 2),
+            content: Text('请先在设置页选择站点')),
         );
       }
       return;

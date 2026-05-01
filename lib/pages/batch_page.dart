@@ -885,7 +885,10 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   Future<void> _goToPage() async {
     final targetPage = int.tryParse(_pageController.text) ?? 1;
     if (targetPage < 1) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('请输入有效的页码')));
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        duration: Duration(seconds: 2),
+        content: Text('请输入有效的页码')));
       return;
     }
     final appState = context.read<AppState>();
@@ -941,8 +944,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     // 队列中已存在的视频（正在下载/等待/暂停），直接跳过并提示
     if (inQueue.isNotEmpty) {
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${inQueue.length} 个视频已在下载队列中，已跳过')),
+          SnackBar(
+            duration: Duration(seconds: 2),
+            content: Text('${inQueue.length} 个视频已在下载队列中，已跳过')),
         );
       }
     }
@@ -1010,8 +1016,10 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       if (mounted) {
         final msg = '已添加 ${result['new']} 个视频到下载队列'
             '${result['duplicate']! > 0 ? '，${result['duplicate']} 个已跳过' : ''}';
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            duration: Duration(seconds: 2),
             content: Text(msg),
             action: SnackBarAction(label: '查看', onPressed: () => appState.navigateToPage?.call(3)),
           ),
@@ -1265,8 +1273,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 已选数量
-        if (selectedCount > 0)
+        // 已选数量（作者模式下隐藏）
+        if (selectedCount > 0 && !isAuthorPageMode)
           Container(
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1280,8 +1288,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
         
-        // 全选按钮
-        if (selectedCount > 0)
+        // 全选按钮（作者模式下隐藏）
+        if (selectedCount > 0 && !isAuthorPageMode)
           GestureDetector(
             onTap: onSelectAll,
             child: Container(
@@ -1306,8 +1314,8 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
         
-        // 就绪标签
-        Container(
+        // 就绪标签（作者模式下隐藏）
+        if (!isAuthorPageMode) Container(
           margin: const EdgeInsets.only(right: 8),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
@@ -1325,7 +1333,7 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
         
-        // 隐私按钮
+        // 隐私按钮（作者模式下显示）
         IconButton(
           icon: Icon(
             privacyMode ? Icons.visibility_off : Icons.visibility,
