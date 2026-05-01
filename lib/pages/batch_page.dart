@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:91download/widgets/author_page_header.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../crawler/config.dart';
@@ -331,52 +332,35 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                     // ══════════════════════════════════════
                     SliverPersistentHeader(
                       pinned: true,
-                      delegate: _BatchHeaderDelegate(
-                        statusBarHeight: statusBarH,
-                        expandedHeight: _kExpandedHeight,
-                        collapsedHeight: _kCollapsedHeight,
-                        collapseRatio: _collapseRatio,
-                        selectedType: _selectedType,
-                        typeNames: _getTypeNames(appState.crawler?.siteType ?? 'original'),
-                        videoCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
-                      selectedCount: _selectedIds.length,
-                      totalCount: _isAuthorPageMode ? _authorVideos.length : _videos.length,
-                      status: _status,
-                      privacyMode: appState.privacyMode,
-                      isAuthorPageMode: _isAuthorPageMode,
-                      authorName: _currentAuthorName,
-                      // 使用 isFollowedSync 同步方法快速判断关注状态
-                      isFollowed: _isAuthorPageMode && appState.followedAuthorsService.isFollowedSync(_currentAuthorId),
-                      onBack: _isAuthorPageMode ? _exitAuthorPageMode : null,
-                      onFollowToggle: _isAuthorPageMode ? () async {
-                        // 使用 isFollowedSync 判断当前状态
-                        final currentlyFollowed = appState.followedAuthorsService.isFollowedSync(_currentAuthorId);
-                        if (currentlyFollowed) {
-                          await appState.followedAuthorsService.unfollow(_currentAuthorId);
-                        } else {
-                          await appState.followedAuthorsService.follow(_currentAuthorId, _currentAuthorName);
-                        }
-                        // 刷新 UI（notifyListeners 已在 follow/unfollow 中调用，这里确保 setState 触发重建）
-                        if (mounted) setState(() {});
-                      } : null,
-                      onTypeChanged: (v) async {
-                        if (v != null && v != _selectedType) {
-                          setState(() {
-                            _selectedType = v;
-                            _videos.clear();
-                            _selectedIds.clear();
-                            _loadedPage = 0;
-                          });
-                          _pageController.text = '1';
-                          await _goToPage();
-                        }
-                      },
-                      onPrivacyToggle: () => appState.togglePrivacyMode(),
-                      onSelectAll: () {
-                        final currentVideos = _isAuthorPageMode ? _authorVideos : _videos;
-                        final isAllSelected = _selectedIds.length == currentVideos.length;
-                        setState(() {
-                          if (isAllSelected) {
+                      delegate: _isAuthorPageMode
+                        // ── 作者模式：使用统一的 AuthorPageHeader 公共组件
+                        ? AuthorPageHeader(
+                            statusBarHeight: statusBarH,
+                            expandedHeight: _kExpandedHeight,
+                            collapsedHeight: _kCollapsedHeight,
+                            collapseRatio: _collapseRatio,
+                            authorName: _currentAuthorName,
+                            isFollowed: appState.followedAuthorsService.isFollowedSync(_currentAuthorId),
+                            onBack: _exitAuthorPageMode,
+                            onFollowToggle: () async {
+                              final currentlyFollowed = appState.followedAuthorsService.isFollowedSync(_currentAuthorId);
+                              if (currentlyFollowed) {
+                                await appState.followedAuthorsService.unfollow(_currentAuthorId);
+                              } else {
+                                await appState.followedAuthorsService.follow(_currentAuthorId, _currentAuthorName);
+                              }
+                              if (mounted) setState(() {});
+                            },
+                            videoCount: _authorVideos.length,
+                            selectedCount: _selectedIds.length,
+                            totalCount: _authorVideos.length,
+                            status: _status,
+                            privacyMode: appState.privacyMode,
+                            onPrivacyToggle: () => appState.togglePrivacyMode(),
+                            onSelectAll: () {
+                              final isAllSelected = _selectedIds.length == _authorVideos.length;
+                              setState(() {
+                                if (isAllSelected) {
                             _selectedIds.clear();
                           } else {
                             _selectedIds = currentVideos.map((v) => v.id).toSet();
