@@ -1324,65 +1324,68 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 已选数量
-        if (selectedCount > 0)
+        // 作者模式下不显示批量操作按钮
+        if (!isAuthorPageMode) ...[
+          // 已选数量
+          if (selectedCount > 0)
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '已选 $selectedCount 个',
+                style: const TextStyle(color: Colors.blue, fontSize: 11),
+              ),
+            ),
+          
+          // 全选按钮
+          if (selectedCount > 0)
+            GestureDetector(
+              onTap: onSelectAll,
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: selectedCount == totalCount
+                      ? Colors.blue
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: selectedCount == totalCount
+                      ? null
+                      : Border.all(color: Colors.blue, width: 2),
+                ),
+                child: Icon(
+                  Icons.check,
+                  color: selectedCount == totalCount
+                      ? Colors.white
+                      : Colors.blue,
+                  size: 18,
+                ),
+              ),
+            ),
+          
+          // 就绪标签
           Container(
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.2),
+              color: status == '就绪'
+                  ? Colors.green.withOpacity(0.2)
+                  : Colors.orange.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              '已选 $selectedCount 个',
-              style: const TextStyle(color: Colors.blue, fontSize: 11),
-            ),
-          ),
-        
-        // 全选按钮
-        if (selectedCount > 0)
-          GestureDetector(
-            onTap: onSelectAll,
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: selectedCount == totalCount
-                    ? Colors.blue
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-                border: selectedCount == totalCount
-                    ? null
-                    : Border.all(color: Colors.blue, width: 2),
-              ),
-              child: Icon(
-                Icons.check,
-                color: selectedCount == totalCount
-                    ? Colors.white
-                    : Colors.blue,
-                size: 18,
+              status,
+              style: TextStyle(
+                color: status == '就绪' ? Colors.green : Colors.orange,
+                fontSize: 11,
               ),
             ),
           ),
-        
-        // 就绪标签
-        Container(
-          margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: status == '就绪'
-                ? Colors.green.withOpacity(0.2)
-                : Colors.orange.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            status,
-            style: TextStyle(
-              color: status == '就绪' ? Colors.green : Colors.orange,
-              fontSize: 11,
-            ),
-          ),
-        ),
+        ],
         
         // 隐私按钮
         IconButton(
