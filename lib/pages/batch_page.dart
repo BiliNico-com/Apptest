@@ -823,7 +823,7 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
               video.authorId != null && video.authorId!.isNotEmpty
                 ? _buildGridAuthorRow(video, appState)
                 : Padding(
-                    padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    padding: EdgeInsets.fromLTRB(8, 0, 8, 0),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -833,6 +833,22 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
                       ],
                     ),
                   ),
+            // 上传时间（标题下方显示）
+            if (video.uploadDate != null && video.uploadDate!.isNotEmpty)
+              Padding(
+                padding: EdgeInsets.fromLTRB(8, 2, 8, 8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.access_time, size: 10, color: Colors.grey),
+                    SizedBox(width: 2),
+                    Text(
+                      video.uploadDate!,
+                      style: TextStyle(fontSize: 9, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
