@@ -1314,21 +1314,22 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
             ),
           ),
         
-        // 就绪标签（作者模式下隐藏）
-        if (!isAuthorPageMode) Container(
+        // 就绪标签（所有模式显示，作者模式下放在右上角）
+        Container(
           margin: const EdgeInsets.only(right: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
             color: status == '就绪'
                 ? Colors.green.withOpacity(0.2)
                 : Colors.orange.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             status,
             style: TextStyle(
               color: status == '就绪' ? Colors.green : Colors.orange,
-              fontSize: 11,
+              fontSize: isAuthorPageMode ? 10 : 11,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
