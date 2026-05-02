@@ -269,11 +269,18 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
     return Consumer<AppState>(
       builder: (context, appState, _) {
         // 检查是否有待进入的作者主页（从关注页面跳转）
-        if (appState.pendingAuthorInfo != null && !_isAuthorPageMode && appState.crawler != null) {
+        // 修复：如果需要退出当前作者模式，先退出再进入新的作者主页
+        if (appState.pendingAuthorInfo != null && appState.crawler != null) {
           final info = appState.pendingAuthorInfo!;
           appState.pendingAuthorInfo = null;  // 立即清除，防止重复触发
+          appState.clearExitAuthorModeFlag();  // 清除退出标志
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) {
+              // 如果当前处于作者模式，先退出
+              if (_isAuthorPageMode) {
+                _exitAuthorPageMode();
+              }
+              // 然后进入新的作者主页
               _enterAuthorPageMode(info['authorId']!, info['authorName']!);
             }
           });
@@ -430,7 +437,79 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
   }
 
   List<Widget> _buildOverlays(AppState appState) {
+    final isDark = appState.isDarkMode;
     return [
+      // 作者模式悬浮胶囊：已选数量 + 全选按钮（滚动时始终显示）
+      if (_isAuthorPageMode && _selectedIds.isNotEmpty)
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 56,  // 紧贴 Header 底部
+          left: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[850]!.withOpacity(0.95) : Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 已选数量
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '已选 ${_selectedIds.length} 个',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 全选按钮
+                GestureDetector(
+                  onTap: () {
+                    final currentVideos = _isAuthorPageMode ? _authorVideos : _videos;
+                    final isAllSelected = _selectedIds.length == currentVideos.length;
+                    setState(() {
+                      if (isAllSelected) {
+                        _selectedIds.clear();
+                      } else {
+                        _selectedIds = currentVideos.map((v) => v.id).toSet();
+                      }
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _videos.length)
+                          ? Colors.blue
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _videos.length)
+                          ? null
+                          : Border.all(color: Colors.blue, width: 2),
+                    ),
+                    child: Icon(
+                      Icons.check,
+                      color: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _videos.length)
+                          ? Colors.white
+                          : Colors.blue,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       // 页码跳转（作者主页模式隐藏）
       if (!_isAuthorPageMode) _buildBottomPageNavigation(),
       if (_showBackToTop && appState.showBackToTop)
@@ -1255,55 +1334,12 @@ class _BatchHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ),
                 ),
               
-              // ── 第三行：下拉选择器/批量操作按钮（展开时显示）──
+              // ── 第三行：下拉选择器（展开时显示）──
+              // 注：作者模式的"已选X个 全选"已移至 _buildOverlays 悬浮显示
               if (collapseRatio < 0.5)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                  child: isAuthorPageMode
-                      ? Row(
-                          children: [
-                            // 已选数量悬浮胶囊（作者模式）
-                            if (selectedCount > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  '已选 $selectedCount 个',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-                                ),
-                              ),
-                            // 全选按钮（作者模式）
-                            if (selectedCount > 0) ...[
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: onSelectAll,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: selectedCount == totalCount
-                                        ? Colors.blue
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: selectedCount == totalCount
-                                        ? null
-                                        : Border.all(color: Colors.blue, width: 2),
-                                  ),
-                                  child: Icon(
-                                    Icons.check,
-                                    color: selectedCount == totalCount
-                                        ? Colors.white
-                                        : Colors.blue,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        )
-                      : _buildTypeChip(ctx, isDark),
+                  child: _buildTypeChip(ctx, isDark),
                 ),
             ],
           ),

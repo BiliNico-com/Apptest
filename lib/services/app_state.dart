@@ -69,11 +69,23 @@ class AppState extends ChangeNotifier {
   Map<String, String>? pendingAuthorInfo;  // {'authorId': '...', 'authorName': '...'}
   
   /// 设置待进入的作者主页并跳转到批量页面
+  /// 如果当前处于作者模式，会先退出再进入新的作者主页
   void enterAuthorFromFollowed(String authorId, String authorName) {
     pendingAuthorInfo = {'authorId': authorId, 'authorName': authorName};
+    // 标记需要退出当前作者模式
+    _needsExitAuthorMode = true;
     if (navigateToPage != null) {
       navigateToPage!(0);  // 跳转到批量页面
     }
+  }
+  
+  // 内部标志：是否需要退出当前作者模式
+  bool _needsExitAuthorMode = false;
+  bool get needsExitAuthorMode => _needsExitAuthorMode;
+  
+  // 清除退出作者模式的标志
+  void clearExitAuthorModeFlag() {
+    _needsExitAuthorMode = false;
   }
 
   // 爬虫实例
