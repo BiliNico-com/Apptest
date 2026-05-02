@@ -462,9 +462,13 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
       // 页码跳转悬浮胶囊（仅视频搜索模式显示，作者模式隐藏）
       if (!_isAuthorMode && !_isAuthorPageMode) _buildBottomPageNavigation(appState),
       // 回顶部按钮
+      // 当在右侧且有已选悬浮胶囊时（bottom=150），将回到顶部按钮放在上方（bottom=200）
+      // 否则放在常规位置（bottom=80）
       if (_showBackToTop && appState.showBackToTop)
         Positioned(
-          bottom: (_selectedIds.isNotEmpty) ? 160.0 : 80.0,
+          bottom: ((_isAuthorMode || _isAuthorPageMode) && _selectedIds.isNotEmpty && appState.backToTopPosition == 'right') 
+              ? 200.0 
+              : 80.0,
           left: appState.backToTopPosition == 'left' ? 16 : null,
           right: appState.backToTopPosition == 'right' ? 16 : null,
           child: FloatingActionButton(

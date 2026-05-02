@@ -514,7 +514,11 @@ class _BatchPageState extends State<BatchPage> with AutomaticKeepAliveClientMixi
       if (!_isAuthorPageMode) _buildBottomPageNavigation(),
       if (_showBackToTop && appState.showBackToTop)
         Positioned(
-          bottom: (appState.backToTopPosition == 'right' && _selectedIds.isNotEmpty) ? 160.0 : 80.0,
+          // 当在右侧且有已选悬浮胶囊时（bottom=150），将回到顶部按钮放在上方（bottom=200）
+          // 否则放在常规位置（bottom=80）
+          bottom: (_isAuthorPageMode && _selectedIds.isNotEmpty && appState.backToTopPosition == 'right') 
+              ? 200.0 
+              : 80.0,
           left: appState.backToTopPosition == 'left' ? 16 : null,
           right: appState.backToTopPosition == 'right' ? 16 : null,
           child: FloatingActionButton(
