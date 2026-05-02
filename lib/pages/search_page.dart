@@ -396,8 +396,70 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   
   /// 覆盖层：翻页控件 + 浮动按钮
   List<Widget> _buildOverlays(AppState appState) {
+    final isDark = appState.isDarkMode;
     return [
-      // 页码跳转悬浮胶囊（仅视频搜索模式显示，作者主页模式隐藏）
+      // 作者模式悬浮胶囊：已选数量 + 全选按钮（固定在底部，紧贴下载按钮上方）
+      if ((_isAuthorMode || _isAuthorPageMode) && _selectedIds.isNotEmpty)
+        Positioned(
+          bottom: 150,  // 紧贴下载按钮上方（下载按钮 bottom=80 + FAB高度约56 + 间距14）
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[850]!.withOpacity(0.95) : Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 已选数量
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '已选 ${_selectedIds.length} 个',
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // 全选按钮
+                GestureDetector(
+                  onTap: _toggleAll,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _results.length)
+                          ? Colors.blue
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _results.length)
+                          ? null
+                          : Border.all(color: Colors.blue, width: 2),
+                    ),
+                    child: Icon(
+                      Icons.check,
+                      color: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _results.length)
+                          ? Colors.white
+                          : Colors.blue,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      // 页码跳转悬浮胶囊（仅视频搜索模式显示，作者模式隐藏）
       if (!_isAuthorMode && !_isAuthorPageMode) _buildBottomPageNavigation(appState),
       // 回顶部按钮
       if (_showBackToTop && appState.showBackToTop)
@@ -475,47 +537,7 @@ class _SearchPageState extends State<SearchPage> with AutomaticKeepAliveClientMi
   /// AppBar右侧操作按钮
   List<Widget> _buildAppBarActions(AppState appState) {
     return [
-      // 已选数量
-      if (_selectedIds.isNotEmpty)
-        Container(
-          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            '已选 ${_selectedIds.length} 个',
-            style: TextStyle(color: Colors.blue, fontSize: 12),
-          ),
-        ),
-      // 全选勾选框
-      if (_selectedIds.isNotEmpty)
-        GestureDetector(
-          onTap: _toggleAll,
-          child: Container(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            padding: EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _results.length) 
-                  ? Colors.blue 
-                  : Theme.of(context).scaffoldBackgroundColor.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(8),
-              border: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _results.length) 
-                  ? null 
-                  : Border.all(color: Colors.blue, width: 2),
-            ),
-            child: Icon(
-              Icons.check,
-              color: _selectedIds.length == (_isAuthorPageMode ? _authorVideos.length : _results.length) 
-                  ? Colors.white 
-                  : Colors.blue,
-              size: 20,
-            ),
-          ),
-        ),
-      // 就绪按钮
+      // 就绪按钮（移到右上角）
       Container(
         margin: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
